@@ -1,5 +1,7 @@
 import React, { Component } from 'react';
 
+import { Link } from 'react-router';
+
 class MenuScreen extends Component {
   constructor(props) {
     super(props);
@@ -12,9 +14,15 @@ class MenuScreen extends Component {
       <div className="game-screen game-screen--menu-screen">
         <nav>
           <ul>
-            <li>Play Game</li>
-            <li>Settings</li>
-            <li>Exit</li>
+            <li>
+              <Link to="/game/play">Play Game</Link>
+            </li>
+            <li>
+              <Link to="/game/settings">Settings</Link>
+            </li>
+            <li>
+              <a href="/game/exit">Exit</a>
+            </li>
           </ul>
         </nav>
       </div>

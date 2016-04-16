@@ -50,7 +50,11 @@ app.on('will-finish-launching', () => {
       method: 'GET',
       path: '/game/{route?}',
       handler(request, reply) {
-        reply.file('index.html');
+        if(request.params.route && request.params.route === 'exit') {
+          app.exit();
+        } else {
+          reply.file('index.html');
+        }
       }
     });
 
