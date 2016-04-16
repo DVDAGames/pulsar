@@ -2,9 +2,23 @@
   "name": "pulsar",
   "version": "0.0.1",
   "description": "LD35 gamejam entry",
-  "main": "index.js",
+  "main": "app/window.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "cleandir ./app/",
+    "copy:main": "copyfiles -u 1 src/window.js app/",
+    "copy:html": "copyfiles -u 1 src/index.html app/",
+    "copy:templates": "copyfiles -u 2 src/templates/package.json app/",
+    "electron": "electron .",
+    "server": "node ./app/server.js",
+    "watch": "webpack --watch",
+    "eslint": "npm run lint",
+    "build": "npm run clean && webpack -p",
+    "generate": "npm run copy:main & npm run copy:html & npm run copy:templates",
+    "start": "npm run generate && npm run electron"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DVDAGames/pulsar"
   },
   "keywords": [
     "ld35",
@@ -15,12 +29,45 @@
     "jam"
   ],
   "author": "dvdagames",
-  "license": "ISC",
+  "license": "BSD",
+  "bugs": {
+    "url": "https://github.com/DVDAGames/pulsar"
+  },
+  "homepage": "https://github.com/DVDAGames/pulsar",
   "devDependencies": {
     "babel-core": "^6.7.6",
     "babel-loader": "^6.2.4",
     "babel-preset-es2015": "^6.6.0",
+    "babel-preset-react": "^6.5.0",
+    "clean-dir": "^1.0.3",
+    "copyfiles": "^0.2.1",
+    "css-loader": "^0.23.1",
+    "electron-prebuilt": "^0.37.6",
+    "extract-text-webpack-plugin": "^1.0.1",
+    "node-sass": "^3.4.2",
+    "sass-loader": "^3.2.0",
     "script-loader": "^0.6.1",
+    "style-loader": "^0.13.1",
     "webpack": "^1.13.0"
+  },
+  "dependencies": {
+    "axios": "^0.9.1",
+    "gamepadder": "^0.4.0",
+    "hapi": "^13.3.0",
+    "inert": "^3.2.0",
+    "open": "0.0.5",
+    "react": "^15.0.1",
+    "react-dom": "^15.0.1",
+    "react-router": "^2.2.4"
+  },
+  "engines": {
+    "node": ">=5.x.x",
+    "npm": ">=3.x.x"
+  },
+  "babel": {
+    "presets": [
+      "es2015",
+      "react"
+    ]
   }
 }

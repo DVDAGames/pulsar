@@ -1,0 +1,49 @@
+{
+  "name": "pulsar",
+  "version": "0.0.1",
+  "description": "LD35 Entry",
+  "keywords": [
+    "ludum dare",
+    "game jam",
+    "ld35",
+    "electron",
+    "game"
+  ],
+  "homepage": "https://github.com/dvdagames/pulsar",
+  "bugs": "https://github.com/dvdagames/pulsar/issues",
+  "author": "dvdagames",
+  "main": "window.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dvdagames/pulsar"
+  },
+  "scripts": {
+    "clean": "rm -rf ../dist/$npm_package_version",
+    "package:osx": "electron-packager . $npm_package_electron_appName --platform=darwin --arch=x64 --asar --out=\"../dist/$npm_package_version\" --app-version=$npm_package_version --app-copyright=$npm_package_electron_appCopyright --app-bundle-id=$npm_package_electron_appBundleId --app-helper-id=$npm_package_electron_appBundleId --app-categoy-type=$npm_package_electron_appCategoyType",
+    "package": "npm run clean && npm run package:osx"
+  },
+  "devDependencies": {
+    "electron-packager": "^6.0.0",
+    "electron-prebuilt": "^0.37.2"
+  },
+  "dependencies": {
+    "axios": "^0.9.1",
+    "hapi": "^13.2.2",
+    "inert": "^3.2.0",
+    "open": "0.0.5",
+    "lodash": "^4.6.1",
+    "react": "^0.14.7",
+    "react-dom": "^0.14.7",
+    "react-router": "^2.0.1"
+  },
+  "engines": {
+    "node": ">=5.x.x"
+  },
+  "electron": {
+    "appName": "pulsar",
+    "appCopyright": "Copyright 2016 Dead Villager Dead Adventurer Games",
+    "appBundleId": "com.dvdagames.pulsar" ,
+    "appCategoryType": "public.app-category.games",
+    "helperBundleId": "com.dvdagames.pulsar-helper"
+  }
+}
