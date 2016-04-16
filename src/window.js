@@ -82,7 +82,7 @@ app.on('ready', () => {
     height: 480
   });
 
-  mainWindow.loadURL(`http://localhost:${port}/game/`);
+  mainWindow.loadURL(`http://localhost:${port}/game/play`);
 
   mainWindow.on('closed', () => {
     mainWindow = null;

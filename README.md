@@ -1,3 +1,3 @@
-# Pulsar v0.0.1
+# Pulsar v0.1.0
 
 LD35 GameJam Entry

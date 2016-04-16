@@ -1,0 +1,25 @@
+{
+  "name": "pulsar",
+  "description": "LD35 entry",
+  "main": "app/window.js",
+  "author": "dvdagames",
+  "license": "BSD",
+  "keywords": [
+    "game",
+    "ld35",
+    "ludum dare",
+    "game jam"
+  ],
+  "homepage": "https://github.com/dvdagames/pulsar",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "EaselJS": "https://github.com/CreateJS/EaselJS.git",
+    "PreloadJS": "https://github.com/CreateJS/PreloadJS.git"
+  }
+}
