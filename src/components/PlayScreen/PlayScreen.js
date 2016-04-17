@@ -8,16 +8,38 @@ import ActionMap from '../../config/actionmap';
 
 import ActionList from '../../config/actionlist';
 
+import Player from '../../entities/Player/Player';
+
+import Enemy from '../../entities/Enemy/Enemy';
+
 const preload = [
   {
-    src: "/assets/player.png",
-    id: "player"
+    src: "/assets/player_form_absorb.png",
+    id: "player_absorb"
+  },
+  {
+    src: "/assets/player_form_shield.png",
+    id: "player_shield"
+  },
+  {
+    src: "/assets/player_bullet.png",
+    id: 'player_bullet'
+  },
+  {
+    src: "/assets/enemy_standard.png",
+    id: 'enemy_standard'
+  },
+  {
+    src: "/assets/enemy_bullet.png",
+    id: 'enemy_bullet'
   }
 ];
 
 const createjs = window.createjs;
 
 let assets = [];
+let bullets = [];
+let enemies = [];
 
 let stage;
 let player;
@@ -26,11 +48,10 @@ class PlayScreen extends Component {
   constructor(props) {
     super(props);
 
-    this.numberOfPlayers = 1;
-
     this.state = {
       gameStarted: false,
       gameOver: false,
+      gamePaused: false,
       playerPoints: 0,
       playerHealth: 0,
       playerBullets: 0,
@@ -39,7 +60,9 @@ class PlayScreen extends Component {
       playerEnergy: 0,
       numberOfPlayers: 1,
       controllers: [],
-      playUsing: 'gamepad'
+      playUsing: 'gamepad',
+      controlsChosen: false,
+      currentPower: ActionList[5]
     };
   }
 
@@ -54,7 +77,11 @@ class PlayScreen extends Component {
     const queue = new createjs.LoadQueue(false);
 
     const loaded = () => {
-      assets.push(queue.getResult('player'));
+      assets.push(queue.getResult('player_absorb'));
+      assets.push(queue.getResult('player_shield'));
+      assets.push(queue.getResult('player_bullet'));
+      assets.push(queue.getResult('enemy_standard'));
+      assets.push(queue.getResult('enemy_bullet'));
 
       this.renderGame();
     };
@@ -67,14 +94,21 @@ class PlayScreen extends Component {
   renderGame() {
     stage = new createjs.Stage('game');
 
-    player = new createjs.Bitmap(assets[0]);
+    const playerBitmaps = [
+      assets[0],
+      assets[2]
+    ];
 
-    player.setBounds((640 / 2 - 32 / 2), (480 / 2 - 32 / 2), 32, 32);
+    const coords = {
+      x: 640 / 2 - 32 / 2,
+      y: 480 / 2 - 32 / 2
+    };
 
-    player.x = 640 / 2 - 32 / 2;
-    player.y = 480 / 2 - 32 / 2;
+    const properties = {
+      bullet: assets[2]
+    };
 
-    stage.addChild(player);
+    player = new Player(playerBitmaps, coords, stage, this.state.currentPower, properties);
 
     stage.update();
 
@@ -87,7 +121,10 @@ class PlayScreen extends Component {
   pollGamepads() {
     const gamepads = GamepadderUtils.getGamepads();
 
-    if(gamepads.length) {
+    if(gamepads.length && gamepads[0]) {
+      this.state.controlsChosen = true;
+      this.state.playUsing = 'gamepad';
+
       gamepads.forEach((pad, index) => {
         const controller = new Gamepadder(pad);
         const buttonMap = new Buttonmancer(ActionMap[this.state.playUsing]);
@@ -105,67 +142,132 @@ class PlayScreen extends Component {
       }
 
       this.setState({
-        controllers: this.state.controllers
+        controllers: this.state.controllers,
+        playUsing: this.state.playUsing,
+        controlsChosen: this.state.controlsChosen
       });
     }
   }
 
   addListeners() {
     this.controllerConnectedEvent = window.addEventListener('gamepadconnected', (e) => {
-      console.log('gamepad connected');
+      if(!this.state.controlsChosen) {
+        this.state.controlsChosen = true;
+        this.state.playUsing = 'gamepad';
+      }
 
-      const controller = new Gamepadder(e.gamepad);
+      if(this.state.playUsing === 'gamepad' && this.state.controllers.length < this.state.numberOfPlayers) {
+        console.log('gamepad connected');
 
-      const buttonMap = new Buttonmancer(ButtonmancerUtils.convertButtonIndexesToButtonNames(ActionMap[this.state.playUsing], controller.options.buttonMap));
+        const controller = new Gamepadder(e.gamepad);
 
-      if(!this.state.controllers[controller.id]) {
-        this.state.controllers[controller.id] = {
-          controller,
-          buttonMap
+        const buttonMap = new Buttonmancer(ButtonmancerUtils.convertButtonIndexesToButtonNames(ActionMap[this.state.playUsing], controller.options.buttonMap));
+
+        if(!this.state.controllers[controller.id]) {
+          this.state.controllers[controller.id] = {
+            controller,
+            buttonMap
+          };
+
+          this.setState({
+            controllers: this.state.controllers,
+            controlsChosen: this.state.controlsChosen,
+            playUsing: this.state.playUsing
+          });
+        }
+
+        this.controllerDisconnectedEvent = window.addEventListener('gamepaddisconnected', (e) => {
+          console.log('gamepad disconnected');
+          this.state.controllers.splice(e.gamepad.id, 1);
+
+          this.setState({
+            controllers: this.state.controllers
+          });
+        });
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      e.preventDefault();
+
+      let keyPressed = ButtonmancerUtils.getKey(e).key;
+
+      if(this.state.controlsChosen && this.state.playUsing === 'keyboard') {
+        this.state.controllers[0].controller.keyPresses[keyPressed.key] = true;
+      } else if(!this.state.controlsChosen) {
+        clearInterval(this.checkForGamePadsInterval);
+
+        console.log('using keyboard instead of gamepad');
+
+        this.state.playUsing = 'keyboard';
+        this.state.controlsChosen = true;
+
+        const actions = ActionMap[this.state.playUsing];
+
+        this.state.controllers[0] = {
+          controller: {
+            id: 0,
+            name: 'Keyboard',
+            keyPresses: {}
+          },
+          buttonMap: new Buttonmancer(actions)
         };
 
         this.setState({
-          controllers: this.state.controllers
+          playUsing: this.state.playUsing,
+          controllers: this.state.controllers,
+          controlsChosen: this.state.controlsChosen
         });
       }
+    });
 
-      this.controllerDisconnectedEvent = window.addEventListener('gamepaddisconnected', (e) => {
-        console.log('gamepad disconnected');
-        this.state.controllers.splice(e.gamepad.id, 1);
+    document.addEventListener('keyup', (e) => {
+      e.preventDefault();
+
+      let keyPressed = ButtonmancerUtils.getKey(e).key;
+
+      if(keyPressed.key === ActionMap.PAUSE) {
+        createjs.Ticker.paused = !createjs.Ticker.paused;
+
+        this.state.gamePaused = !this.state.gamePaused;
 
         this.setState({
-          controllers: this.state.controllers
+          gamePaused: this.state.gamePaused
         });
-      });
+      } else {
+        if(this.state.controlsChosen && this.state.playUsing === 'keyboard') {
+          this.state.controllers[0].controller.keyPresses[keyPressed.key] = false;
+        }
+      }
     });
-
-    this.keyboardStartEvent = document.addEventListener('keydown', this.keyboardStartFunction.bind(this));
   }
 
-  keyboardStartFunction(e) {
-    clearInterval(this.checkForGamePadsInterval);
+  spawnEnemy() {
+    const types = [
+      'standard'
+    ];
 
-    console.log('using keyboard instead of gamepad');
+    const typeRoll = Math.floor(Math.random() * ((types.length - 1) - 0 + 1)) + 0;
 
-    this.state.playUsing = 'keyboard';
+    const type = types[typeRoll];
 
-    const actions = ActionMap[this.state.playUsing];
-
-    this.state.controllers[0] = {
-      controller: {
-        id: 0,
-        name: 'Keyboard',
-        keyPresses: {}
-      },
-      buttonMap: new Buttonmancer(actions)
+    const position = {
+      x: 120,
+      y: 10
     };
 
-    this.setState({
-      playUsing: this.state.playUsing,
-      controllers: this.state.controllers
-    });
+    const bullets = {
+      standard: assets[4]
+    }
 
-    document.removeEventListener('keydown', this.keyboardStartFunction);
+    const properties = {
+      bullet: bullets[type],
+      type: type
+    };
+
+    const enemy = new Enemy(assets[3], position, stage, player.entity, properties);
+
+    enemies.push(enemy);
   }
 
   tick(event) {
@@ -192,21 +294,58 @@ class PlayScreen extends Component {
             if(buttonPresses[pressedButton] && inputMethod.buttonMap.map.hasOwnProperty(pressedButton)) {
               const actionName = inputMethod.buttonMap.map[pressedButton];
 
-              const movementDelata = delta * 100;
+              const movementDelta = delta * 100;
 
               switch(actionName) {
+                //MOVE_UP
+                //MOVE_DOWN
+                //MOVE_LEFT
+                //MOVE_RIGHT
                 case ActionList[0]:
-                  player.y -= movementDelata;
-                  break;
                 case ActionList[1]:
-                  player.y += movementDelata;
-                  break;
                 case ActionList[2]:
-                  player.x -= movementDelata;
-                  break;
                 case ActionList[3]:
-                  player.x += movementDelata;
+                  if(!createjs.Ticker.paused) {
+                    player.move(actionName, movementDelta);
+                  }
+
                   break;
+
+                //ABSORB
+                //SHIELD
+                //BULLET
+                //BURST
+                case ActionList[5]:
+                case ActionList[4]:
+                case ActionList[6]:
+                case ActionList[7]:
+                  if(!createjs.Ticker.paused) {
+                    player.changeForms(actionName);
+
+                    this.state.currentPower = actionName;
+
+                    this.setState({ currentPower: this.state.currentPower });
+                  }
+
+                  break;
+
+                //USE_POWER
+                case ActionList[8]:
+                  if(!createjs.Ticker.paused) {
+                    bullets = player.use(bullets);
+                  }
+
+                  break;
+
+                //PAUSE
+                case ActionList[9]:
+                  createjs.Ticker.paused = !createjs.Ticker.paused;
+
+                  this.state.gamePaused = !this.state.gamePaused;
+
+                  this.setState({
+                    gamePaused: this.state.gamePaused
+                  });
                 default:
                   break;
               }
@@ -215,11 +354,27 @@ class PlayScreen extends Component {
         }
       }
     });
+
+    if(!enemies.length) {
+      this.spawnEnemy();
+    } else {
+      enemies.forEach((enemy) => {
+        enemy.move(player.entity, delta);
+        enemy.fireShot(bullets);
+      });
+    }
+
+    bullets.forEach((bullet) => {
+      bullet.shoot(delta);
+    });
   }
 
   render() {
     return (
       <div className="game-screen game-screen--play-screen">
+
+        {(createjs.Ticker.paused) ? <h3 class="game-screen-message game-screen-message--paused">PAUSED</h3> : ''}
+
       </div>
     );
   }
