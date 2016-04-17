@@ -33,6 +33,23 @@ class Star {
 
     this.stage.addChild(this.entity);
   }
+
+  drift(delta) {
+    const xDirection = Math.floor(Math.random() * (20 - 1 + 1)) + 1;
+    const yDirection = Math.floor(Math.random() * (20 - 1 + 1)) + 1;
+
+    if(xDirection > 10) {
+      this.entity.x += delta * 1.25;
+    } else {
+      this.entity.x -= delta * 1.25;
+    }
+
+    if(yDirection > 10) {
+      this.entity.y += delta * 1.25;
+    } else {
+      this.entity.y -= delta * 1.25;
+    }
+  }
 };
 
 export default Star;

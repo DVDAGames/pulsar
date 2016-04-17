@@ -54,6 +54,7 @@ let stage;
 let player;
 
 const maxStars = 60;
+const minStars = 15;
 
 class PlayScreen extends Component {
   constructor(props) {
@@ -115,6 +116,40 @@ class PlayScreen extends Component {
   renderGame() {
     stage = new createjs.Stage('game');
 
+    const starImages = [
+      {
+        img: assets.star_big,
+        width: 16,
+        height: 16
+      },
+      {
+        img: assets.star_small,
+        width: 8,
+        height: 8
+      },
+      {
+        img: assets.star_big,
+        width: 16,
+        height: 16
+      },
+      {
+        img: assets.star_small,
+        width: 8,
+        height: 8
+      }
+    ];
+
+    const starsToGenerate = Math.floor(Math.random() * ((maxStars - 1) - minStars + 1)) + minStars;
+
+    for(let i = 0; i < starsToGenerate; i++) {
+      const x = Math.floor(Math.random() * (((stage.canvas.clientWidth + 10) - 1) - 10 + 1)) + 10;
+      const y = Math.floor(Math.random() * (((stage.canvas.clientHeight + 10) - 1) - 10 + 1)) + 10;
+      const size = Math.floor(Math.random() * ((starImages.length - 1) - 0 + 1)) + 0;
+      const star = new Star(starImages[size].img, starImages[size].width, starImages[size].height, { x, y }, stage);
+
+      stars.push(star);
+    }
+
     const coords = {
       x: 640 / 2 - 32 / 2,
       y: 480 / 2 - 32 / 2
@@ -142,28 +177,6 @@ class PlayScreen extends Component {
     this.setState({
       cooldowns: this.state.cooldowns
     });
-
-    const starImages = [
-      {
-        img: assets.star_small,
-        width: 8,
-        height: 8
-      },
-      {
-        img: assets.star_big,
-        width: 16,
-        height: 16
-      }
-    ];
-
-    const starsToGenerate = Math.floor(Math.random() * ((maxStars - 1) - 1 + 1)) + 1;
-
-    for(let i = 0; i < starsToGenerate; i++) {
-      const x = Math.floor(Math.random() * (((stage.canvas.clientWidth + 10) - 1) - 10 + 1)) + 10;
-      const y = Math.floor(Math.random() * (((stage.canvas.clientHeight + 10) - 1) - 10 + 1)) + 10;
-      const size = Math.floor(Math.random() * ((starImages.length - 1) - 0 + 1)) + 0;
-      const star = new Star(starImages[size].img, starImages[size].width, starImages[size].height, { x, y }, stage);
-    }
 
     stage.update();
 
@@ -457,6 +470,10 @@ class PlayScreen extends Component {
 
     bullets.forEach((bullet) => {
       bullet.shoot(delta);
+    });
+
+    stars.forEach((star) => {
+      star.drift(delta);
     });
 
     this.setState({

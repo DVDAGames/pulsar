@@ -152,24 +152,24 @@ class Player {
   move(action, delta) {
     switch(action) {
       case ActionList[0]:
-        this.entity.x -= Math.sin(this.entity.rotation * (Math.PI / -180)) * delta;
-        this.entity.y -= Math.cos(this.entity.rotation * (Math.PI / -180)) * delta;
+        this.entity.x -= Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
+        this.entity.y -= Math.cos(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
 
         break;
 
       case ActionList[1]:
-        this.entity.x += Math.sin(this.entity.rotation * (Math.PI / -180)) * delta;
-        this.entity.y += Math.cos(this.entity.rotation * (Math.PI / -180)) * delta;
+        this.entity.x += Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
+        this.entity.y += Math.cos(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
 
         break;
 
       case ActionList[2]:
-        this.entity.rotation -= delta * (180 / Math.PI) / 25;
+        this.entity.rotation -= delta * (180 / Math.PI) / 15;
 
         break;
 
       case ActionList[3]:
-        this.entity.rotation += delta * (180 / Math.PI) / 25;
+        this.entity.rotation += delta * (180 / Math.PI) / 15;
 
         break;
 

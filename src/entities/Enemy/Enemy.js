@@ -6,8 +6,8 @@ const defaults = {
   type: 'standard',
   weakness: 'BULLET',
   health: 25,
-  delay: 15,
-  defaultDelay: 15,
+  delay: 5,
+  defaultDelay: 8,
   fired: false
 };
 
