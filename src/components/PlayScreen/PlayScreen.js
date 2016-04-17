@@ -4,6 +4,8 @@ import { Gamepadder, GamepadderUtils } from 'gamepadder';
 
 import { Buttonmancer, ButtonmancerUtils } from 'buttonmancer';
 
+import HUD from '../HUD/HUD';
+
 import ActionMap from '../../config/actionmap';
 
 import ActionList from '../../config/actionlist';
@@ -12,37 +14,46 @@ import Player from '../../entities/Player/Player';
 
 import Enemy from '../../entities/Enemy/Enemy';
 
+import Star from '../../entities/Star/Star';
+
 const preload = [
   {
-    src: "/assets/player_form_absorb.png",
-    id: "player_absorb"
+    src: '/assets/player.png',
+    id: 'player'
   },
   {
-    src: "/assets/player_form_shield.png",
-    id: "player_shield"
-  },
-  {
-    src: "/assets/player_bullet.png",
+    src: '/assets/player_bullet.png',
     id: 'player_bullet'
   },
   {
-    src: "/assets/enemy_standard.png",
+    src: '/assets/enemy_standard.png',
     id: 'enemy_standard'
   },
   {
-    src: "/assets/enemy_bullet.png",
+    src: '/assets/enemy_bullet.png',
     id: 'enemy_bullet'
+  },
+  {
+    src: '/assets/star_small.png',
+    id: 'star_small'
+  },
+  {
+    src: '/assets/star_big.png',
+    id: 'star_big'
   }
 ];
 
 const createjs = window.createjs;
 
-let assets = [];
+let assets = {};
 let bullets = [];
 let enemies = [];
+let stars = [];
 
 let stage;
 let player;
+
+const maxStars = 60;
 
 class PlayScreen extends Component {
   constructor(props) {
@@ -53,16 +64,25 @@ class PlayScreen extends Component {
       gameOver: false,
       gamePaused: false,
       playerPoints: 0,
-      playerHealth: 0,
-      playerBullets: 0,
-      playerShields: 0,
-      playerBursts: 0,
-      playerEnergy: 0,
+      playerMaxHealth: 1000,
+      playerMaxEnergy: 1000,
+      playerMaxShields: 10000,
+      playerMaxBursts: 10,
+      playerHealth: 1000,
+      playerShields: 2000,
+      playerBursts: 2,
+      playerEnergy: 200,
       numberOfPlayers: 1,
       controllers: [],
       playUsing: 'gamepad',
       controlsChosen: false,
-      currentPower: ActionList[5]
+      currentPower: ActionList[5],
+      cooldowns: {
+        [ActionList[4]]: {},
+        [ActionList[5]]: {},
+        [ActionList[6]]: {},
+        [ActionList[7]]: {}
+      }
     };
   }
 
@@ -77,11 +97,12 @@ class PlayScreen extends Component {
     const queue = new createjs.LoadQueue(false);
 
     const loaded = () => {
-      assets.push(queue.getResult('player_absorb'));
-      assets.push(queue.getResult('player_shield'));
-      assets.push(queue.getResult('player_bullet'));
-      assets.push(queue.getResult('enemy_standard'));
-      assets.push(queue.getResult('enemy_bullet'));
+      assets.player = queue.getResult('player');
+      assets.player_bullet = queue.getResult('player_bullet');
+      assets.enemy = queue.getResult('enemy_standard');
+      assets.enemy_bullet = queue.getResult('enemy_bullet');
+      assets.star_small = queue.getResult('star_small');
+      assets.star_big = queue.getResult('star_big');
 
       this.renderGame();
     };
@@ -94,21 +115,55 @@ class PlayScreen extends Component {
   renderGame() {
     stage = new createjs.Stage('game');
 
-    const playerBitmaps = [
-      assets[0],
-      assets[2]
-    ];
-
     const coords = {
       x: 640 / 2 - 32 / 2,
       y: 480 / 2 - 32 / 2
     };
 
     const properties = {
-      bullet: assets[2]
+      bullet: assets.player_bullet
     };
 
-    player = new Player(playerBitmaps, coords, stage, this.state.currentPower, properties);
+    player = new Player(assets.player, coords, stage, this.state.currentPower, properties);
+
+    Object.keys(this.state.cooldowns).forEach((power) => {
+      const { delay, transformDelay } = player.getCooldowns(power);
+      const delayActive = false;
+      const transformDelayActive = false;
+
+      this.state.cooldowns[this.state.currentPower] = {
+        delayActive,
+        transformDelayActive,
+        delay,
+        transformDelay
+      };
+    });
+
+    this.setState({
+      cooldowns: this.state.cooldowns
+    });
+
+    const starImages = [
+      {
+        img: assets.star_small,
+        width: 8,
+        height: 8
+      },
+      {
+        img: assets.star_big,
+        width: 16,
+        height: 16
+      }
+    ];
+
+    const starsToGenerate = Math.floor(Math.random() * ((maxStars - 1) - 1 + 1)) + 1;
+
+    for(let i = 0; i < starsToGenerate; i++) {
+      const x = Math.floor(Math.random() * (((stage.canvas.clientWidth + 10) - 1) - 10 + 1)) + 10;
+      const y = Math.floor(Math.random() * (((stage.canvas.clientHeight + 10) - 1) - 10 + 1)) + 10;
+      const size = Math.floor(Math.random() * ((starImages.length - 1) - 0 + 1)) + 0;
+      const star = new Star(starImages[size].img, starImages[size].width, starImages[size].height, { x, y }, stage);
+    }
 
     stage.update();
 
@@ -256,16 +311,16 @@ class PlayScreen extends Component {
       y: 10
     };
 
-    const bullets = {
-      standard: assets[4]
+    const bulletTypes = {
+      standard: assets.enemy_bullet
     }
 
     const properties = {
-      bullet: bullets[type],
+      bullet: bulletTypes[type],
       type: type
     };
 
-    const enemy = new Enemy(assets[3], position, stage, player.entity, properties);
+    const enemy = new Enemy(assets.enemy, position, stage, player.entity, properties);
 
     enemies.push(enemy);
   }
@@ -319,19 +374,32 @@ class PlayScreen extends Component {
                 case ActionList[4]:
                 case ActionList[6]:
                 case ActionList[7]:
-                  if(!createjs.Ticker.paused) {
+                  if(!createjs.Ticker.paused && !this.state.cooldowns[this.state.currentPower].transformDelayActive) {
                     player.changeForms(actionName);
 
                     this.state.currentPower = actionName;
 
-                    this.setState({ currentPower: this.state.currentPower });
+                    this.setState({
+                      currentPower: this.state.currentPower
+                    });
                   }
 
                   break;
 
                 //USE_POWER
                 case ActionList[8]:
-                  if(!createjs.Ticker.paused) {
+                  if(!createjs.Ticker.paused && !this.state.cooldowns[this.state.currentPower].delayActive) {
+                    const { delay, transformDelay } = player.getCooldowns(this.state.currentPower);
+                    const delayActive = true;
+                    const transformDelayActive = true;
+
+                    this.state.cooldowns[this.state.currentPower] = {
+                      delayActive,
+                      transformDelayActive,
+                      delay,
+                      transformDelay
+                    };
+
                     bullets = player.use(bullets);
                   }
 
@@ -343,9 +411,6 @@ class PlayScreen extends Component {
 
                   this.state.gamePaused = !this.state.gamePaused;
 
-                  this.setState({
-                    gamePaused: this.state.gamePaused
-                  });
                 default:
                   break;
               }
@@ -355,17 +420,48 @@ class PlayScreen extends Component {
       }
     });
 
+    for(const power in this.state.cooldowns) {
+      if(this.state.cooldowns.hasOwnProperty(power)) {
+        if(this.state.cooldowns[power].delay > 0 && this.state.cooldowns[power].delayActive) {
+          this.state.cooldowns[power].delay--;
+        } else {
+          this.state.cooldowns[power].delay = player.properties.formList[power].defaultDelay;
+          this.state.cooldowns[power].delayActive = false;
+        }
+
+        if(this.state.cooldowns[power].transformDelay > 0 && this.state.cooldowns[power].transformDelayActive) {
+          this.state.cooldowns[power].transformDelay--;
+        } else {
+          this.state.cooldowns[power].transformDelay = player.properties.formList[power].defaultTransformDelay;
+          this.state.cooldowns[power].transformDelayActive = false;
+        }
+      }
+    }
+
     if(!enemies.length) {
       this.spawnEnemy();
     } else {
       enemies.forEach((enemy) => {
         enemy.move(player.entity, delta);
-        enemy.fireShot(bullets);
+
+        if(enemy.properties.delay > 0 && enemy.properties.fired) {
+          enemy.properties.delay--;
+        } else {
+          enemy.properties.delay = enemy.properties.defaultDelay;
+          enemy.properties.fired = false;
+
+          enemy.fireShot(bullets);
+        }
       });
     }
 
     bullets.forEach((bullet) => {
       bullet.shoot(delta);
+    });
+
+    this.setState({
+      cooldowns: this.state.cooldowns,
+      gamePaused: this.state.gamePaused
     });
   }
 
@@ -375,6 +471,7 @@ class PlayScreen extends Component {
 
         {(createjs.Ticker.paused) ? <h3 class="game-screen-message game-screen-message--paused">PAUSED</h3> : ''}
 
+        <HUD {...this.state} />
       </div>
     );
   }

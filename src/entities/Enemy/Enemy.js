@@ -5,7 +5,10 @@ const createjs = window.createjs;
 const defaults = {
   type: 'standard',
   weakness: 'BULLET',
-  health: 25
+  health: 25,
+  delay: 15,
+  defaultDelay: 15,
+  fired: false
 };
 
 class Enemy {
@@ -18,15 +21,16 @@ class Enemy {
       images: [bitmap],
       frames: {
         width: 32,
-        height: 32
+        height: 32,
+        regX: 32 / 2,
+        regY: 32 / 3,
+        numFrames: 20
       },
       animations: {
         idle: {
-          frames: [0, 19],
-          speed: 0.3333333
+          frames: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
         }
-      },
-      framerate: 60
+      }
     });
 
     this.entity = new createjs.Sprite(spritesheet, 'idle');
@@ -39,6 +43,8 @@ class Enemy {
     this.entity.rotation = angle;
 
     this.entity.setBounds(coords.x, coords.y, 32, 32);
+
+    this.entity.gotoAndPlay('idle');
 
     this.stage.addChild(this.entity);
   }
@@ -61,6 +67,8 @@ class Enemy {
   }
 
   fireShot(bullets) {
+    this.properties.fired = true;
+
     const bullet = new Bullet(this.properties.bullet, this.entity, { type: 'enemy' });
 
     this.stage.addChild(bullet.entity);

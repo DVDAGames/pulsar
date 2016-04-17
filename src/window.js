@@ -78,8 +78,8 @@ app.on('will-finish-launching', () => {
 
 app.on('ready', () => {
   mainWindow = new BrowserWindow({
-    width: 640,
-    height: 480
+    width: 800,
+    height: 600
   });
 
   mainWindow.loadURL(`http://localhost:${port}/game/play`);

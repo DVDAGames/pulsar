@@ -12,7 +12,7 @@ html {
 }
 
 body {
-  max-width: 600px;
+  max-width: 800px;
   background: $bg;
   text-align: center;
   margin: 0 auto;
@@ -28,7 +28,15 @@ body,
 }
 
 #game {
+  background: #232323;
   position: absolute;
   top: 0;
   left: 0;
+}
+
+.game-hud {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 99999;
 }

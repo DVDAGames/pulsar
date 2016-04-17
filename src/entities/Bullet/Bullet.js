@@ -9,18 +9,29 @@ class Bullet {
   constructor(bitmap, origin, properties = {}) {
     this.properties = Object.assign(defaults, properties);
 
-    this.entity = new createjs.Bitmap(bitmap);
+    const spritesheet = new createjs.SpriteSheet({
+      images: [bitmap],
+      frames: {
+        width: 32,
+        height: 32,
+        regX: 32 / 2,
+        regY: 32 / 3,
+        numFrames: 20
+      },
+      animations: {
+        idle: {
+          frames: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+        }
+      }
+    });
+
+    this.entity = new createjs.Sprite(spritesheet, 'idle');
 
     let x = origin.x;
     let y = origin.y;
 
     x -= Math.sin(origin.rotation * (Math.PI / -180));
     y -= Math.cos(origin.rotation * (Math.PI / -180));
-
-    const bulletRect = new createjs.Rectangle(10, 8, 12, 12);
-
-    this.entity.setBounds(x, y, 8, 8);
-    this.entity.sourceRect = bulletRect;
 
     this.entity.x = x;
     this.entity.y = y;
@@ -30,6 +41,8 @@ class Bullet {
       y: y,
       rotation: origin.rotation
     };
+
+    this.entity.gotoAndPlay('idle');
   }
 
   shoot() {
