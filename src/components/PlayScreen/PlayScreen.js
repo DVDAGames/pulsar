@@ -67,22 +67,21 @@ class PlayScreen extends Component {
       playerPoints: 0,
       playerMaxHealth: 1000,
       playerMaxEnergy: 1000,
-      playerMaxShields: 10000,
-      playerMaxBursts: 10,
       playerHealth: 1000,
-      playerShields: 2000,
-      playerBursts: 2,
       playerEnergy: 200,
+      playerBullets: 25,
+      playerMaxBullets: 250,
       numberOfPlayers: 1,
+      numberOfLives: 3,
+      maxNumberOfEnemies: 20,
+      lastEnemySpawnPosition: null,
       controllers: [],
       playUsing: 'gamepad',
       controlsChosen: false,
-      currentPower: ActionList[5],
+      currentPower: ActionList[4],
       cooldowns: {
         [ActionList[4]]: {},
-        [ActionList[5]]: {},
-        [ActionList[6]]: {},
-        [ActionList[7]]: {}
+        [ActionList[5]]: {}
       }
     };
   }
@@ -156,7 +155,13 @@ class PlayScreen extends Component {
     };
 
     const properties = {
-      bullet: assets.player_bullet
+      bullet: assets.player_bullet,
+      health: this.state.playerHealth,
+      energy: this.state.playerEnergy,
+      bullets: this.state.playerBullets,
+      maxBullets: this.state.playerMaxBullets,
+      maxHealth: this.state.playerMaxHealth,
+      maxEnergy: this.state.playerMaxEnergy
     };
 
     player = new Player(assets.player, coords, stage, this.state.currentPower, properties);
@@ -312,20 +317,56 @@ class PlayScreen extends Component {
 
   spawnEnemy() {
     const types = [
-      'standard'
+      'enemy'
     ];
 
     const typeRoll = Math.floor(Math.random() * ((types.length - 1) - 0 + 1)) + 0;
 
     const type = types[typeRoll];
 
-    const position = {
-      x: 120,
-      y: 10
-    };
+    const positions = [
+      {
+        x: 120,
+        y: 10
+      },
+      {
+        x: 250,
+        y: 690
+      },
+      {
+        x: 720,
+        y: 590
+      },
+      {
+        x: 40,
+        y: 400
+      },
+      {
+        x: 4,
+        y: 10
+      },
+      {
+        x: 360,
+        y: -40
+      },
+      {
+        x: -40,
+        y: 220
+      },
+      {
+        x: 840,
+        y: 340
+      }
+    ];
+
+    let position = positions[Math.floor(Math.random() * ((positions.length - 1) - 0 + 1)) + 0];
+
+    while(position === this.state.lastEnemySpawnPosition) {
+      position = positions[Math.floor(Math.random() * ((positions.length - 1) - 0 + 1)) + 0];
+    }
 
     const bulletTypes = {
-      standard: assets.enemy_bullet
+      enemy: assets.enemy_bullet
     }
 
     const properties = {
@@ -380,27 +421,25 @@ class PlayScreen extends Component {
                   break;
 
                 //ABSORB
-                //SHIELD
                 //BULLET
-                //BURST
-                case ActionList[5]:
                 case ActionList[4]:
-                case ActionList[6]:
-                case ActionList[7]:
+                case ActionList[5]:
                   if(!createjs.Ticker.paused && !this.state.cooldowns[this.state.currentPower].transformDelayActive) {
-                    player.changeForms(actionName);
+                    const transformed = player.changeForms(actionName);
 
-                    this.state.currentPower = actionName;
+                    if(transformed) {
+                      this.state.currentPower = actionName;
 
-                    this.setState({
-                      currentPower: this.state.currentPower
-                    });
+                      this.setState({
+                        currentPower: this.state.currentPower
+                      });
+                    }
                   }
 
                   break;
 
                 //USE_POWER
-                case ActionList[8]:
+                case ActionList[6]:
                   if(!createjs.Ticker.paused && !this.state.cooldowns[this.state.currentPower].delayActive) {
                     const { delay, transformDelay } = player.getCooldowns(this.state.currentPower);
                     const delayActive = true;
@@ -413,13 +452,20 @@ class PlayScreen extends Component {
                       transformDelay
                     };
 
-                    bullets = player.use(bullets);
+                    const playerValues = player.use(bullets);
+
+                    bullets = playerValues.bullets;
+
+                    this.setState({
+                      playerEnergy: playerValues.playerEnergy,
+                      playerBullets: playerValues.playerBullets
+                    });
                   }
 
                   break;
 
                 //PAUSE
-                case ActionList[9]:
+                case ActionList[7]:
                   createjs.Ticker.paused = !createjs.Ticker.paused;
 
                   this.state.gamePaused = !this.state.gamePaused;
@@ -451,32 +497,49 @@ class PlayScreen extends Component {
       }
     }
 
-    if(!enemies.length) {
-      this.spawnEnemy();
+    if(enemies.length < this.state.maxNumberOfEnemies) {
+      const rng = Math.floor(Math.random() * (100 - 1 + 1)) + 1;
+
+      if(rng > 70) {
+        this.spawnEnemy();
+      }
     } else {
-      enemies.forEach((enemy) => {
-        enemy.move(player.entity, delta);
-
-        if(enemy.properties.delay > 0 && enemy.properties.fired) {
-          enemy.properties.delay--;
+      enemies.forEach((enemy, index, array) => {
+        if(enemy.properties.destroyed) {
+          array.splice(index, 1);
         } else {
-          enemy.properties.delay = enemy.properties.defaultDelay;
-          enemy.properties.fired = false;
+          enemy.move(player.entity, delta, [player, ...enemies]);
 
-          enemy.fireShot(bullets);
+          if(enemy.properties.delay > 0 && enemy.properties.fired) {
+            enemy.properties.delay--;
+          } else {
+            enemy.properties.delay = enemy.properties.defaultDelay;
+            enemy.properties.fired = false;
+
+            enemy.fireShot(bullets);
+          }
         }
       });
     }
 
-    bullets.forEach((bullet) => {
-      bullet.shoot(delta);
+    bullets.forEach((bullet, index, array) => {
+      const shoot = bullet.shoot(delta, [player, ...enemies]);
+
+      if(shoot) {
+        array.splice(index, 1);
+      }
     });
 
     stars.forEach((star) => {
       star.drift(delta);
     });
 
+    player.exist(delta);
+
     this.setState({
+      playerHealth: player.properties.health,
+      playerEnergy: player.properties.energy,
+      playerBullets: player.properties.bullets,
       cooldowns: this.state.cooldowns,
       gamePaused: this.state.gamePaused
     });

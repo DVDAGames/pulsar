@@ -3,17 +3,18 @@ import Bullet from '../Bullet/Bullet';
 const createjs = window.createjs;
 
 const defaults = {
-  type: 'standard',
+  type: 'enemy',
   weakness: 'BULLET',
   health: 25,
   delay: 5,
   defaultDelay: 8,
-  fired: false
+  fired: false,
+  destroyed: false
 };
 
 class Enemy {
   constructor(bitmap, coords, stage, enemy, properties = {}) {
-    this.properties = Object.assign(defaults, properties);
+    this.properties = Object.assign({}, defaults, properties);
 
     this.stage = stage;
 
@@ -50,30 +51,88 @@ class Enemy {
   }
 
   trackEnemy(enemy, delta) {
-    if(!createjs.Ticker.paused) {
+    if(!createjs.Ticker.paused && !this.properties.destroyed) {
       const angle = (Math.atan2(enemy.y - this.entity.y, enemy.x - this.entity.x)) * (180 / Math.PI) * 1.5;
 
       this.entity.rotation = angle;
+
+      return angle;
     }
   }
 
-  move(player, delta) {
-    if(!createjs.Ticker.paused) {
-      this.trackEnemy(player, delta);
+  move(player, delta, entities) {
+    if(!createjs.Ticker.paused && !this.properties.destroyed) {
+      let newX;
+      let newY;
 
-      this.entity.x -= Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 100;
-      this.entity.y -= Math.cos(this.entity.rotation * (Math.PI / -180)) * delta * 100;
+      let collision = this.checkForCollisions(entities, newX, newY);
+
+      const playerAngle = this.trackEnemy(player, delta);
+
+      if(playerAngle < 0) {
+        newX = this.entity.x + Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 100;
+        newY = this.entity.y + Math.cos(this.entity.rotation * (Math.PI / -180)) * delta * 100;
+      } else {
+        newX = this.entity.x - Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 100;
+        newY = this.entity.y - Math.cos(this.entity.rotation * (Math.PI / -180)) * delta * 100;
+      }
+
+      this.entity.x = newX;
+      this.entity.y = newY;
+    }
+  }
+
+  checkForCollisions(objects, newX, newY) {
+    const hit = objects.some((object, index, array) => {
+      if(object != this) {
+        let collisionX = false;
+        let collisionY = false;
+
+        if(this.entity.x <= object.entity.x + object.entity._bounds.width && this.entity.x >= object.entity.x || object.entity.x <= this.entity.x + this.entity._bounds.width && object.entity.x >= this.entity.x) {
+          collisionX = true;
+        }
+
+        if(this.entity.y <= object.entity.y + object.entity._bounds.height && this.entity.y >= object.entity.y || object.entity.y <= this.entity.y + this.entity._bounds.height && object.entity.y >= this.entity.y) {
+          collisionY = true;
+        }
+
+        if(collisionX && collisionY) {
+          object.takeHit(this.properties.dmg);
+
+          return true;
+        }
+      }
+    });
+
+    return hit;
+  }
+
+  takeHit(dmg) {
+    if(!createjs.Ticker.paused && !this.properties.destroyed) {
+      this.properties.health -= dmg;
+
+      if(this.properties.health <= 0) {
+        this.destroy();
+      }
     }
   }
 
   fireShot(bullets) {
-    this.properties.fired = true;
+    if(!createjs.Ticker.paused && !this.properties.destroyed) {
+      this.properties.fired = true;
 
-    const bullet = new Bullet(this.properties.bullet, this.entity, { type: 'enemy' });
+      const bullet = new Bullet(this.properties.bullet, this.entity, this.stage, { type: 'enemy', dmg: 50 });
 
-    this.stage.addChild(bullet.entity);
+      this.stage.addChild(bullet.entity);
 
-    bullets.push(bullet);
+      bullets.push(bullet);
+    }
+  }
+
+  destroy() {
+    this.properties.destroyed = true;
+
+    this.stage.removeChild(this.entity);
   }
 };
 

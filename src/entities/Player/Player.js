@@ -10,6 +10,13 @@ const forms = {
       idle: 'cloud',
       action: 'absorb'
     },
+    drain: {
+      freqeuncy: 30,
+      defaultFrequency: 30,
+      amount: 1
+    },
+    energyDrain: 100,
+    generateBullets: 25,
     delay: 60,
     transformDelay: 30,
     defaultDelay: 60,
@@ -17,49 +24,38 @@ const forms = {
   },
   [ActionList[4]]: {
     animations: {
-      idle: 'square',
-      action: 'shield'
-    },
-    delay: 120,
-    transformDelay: 60,
-    defaultDelay: 120,
-    defaultTransformDelay: 60
-  },
-  [ActionList[6]]: {
-    animations: {
       idle: 'ship',
       action: 'ship'
     },
-    delay: 15,
-    transformDelay: 15,
-    defaultDelay: 15,
-    defaultTransformDelay: 15
-  },
-  [ActionList[7]]: {
-    animations: {
-      idle: 'sphere',
-      action: 'burst'
+    recharge: {
+      frequency: 60,
+      defaultFrequency: 60,
+      amount: 1
     },
-    delay: 180,
-    transformDelay: 60,
-    defaultDelay: 180,
-    defaultTransformDelay: 60
+    delay: 5,
+    transformDelay: 10,
+    defaultDelay: 5,
+    defaultTransformDelay: 10
   }
 };
 
-const defaultForm = Object.assign({}, forms[ActionList[5]]);
+const defaultForm = Object.assign({}, forms[ActionList[4]]);
 
 const defaults = {
+  type: 'player',
   form: defaultForm,
   formList: forms,
-  formName: ActionList[5],
-  health: 100,
-  energy: 10
+  formName: ActionList[4],
+  health: 1000,
+  energy: 1000,
+  maxBullets: 250,
+  bullets: 25,
+  lives: 3
 };
 
 class Player {
   constructor(bitmap, coords, stage, form = defaultForm, properties = {}) {
-    this.properties = Object.assign(defaults, properties);
+    this.properties = Object.assign({}, defaults, properties);
 
     this.stage = stage;
 
@@ -76,23 +72,8 @@ class Player {
         cloud: {
           frames: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
         },
-        square: {
-          frames: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
-        },
-        shield: {
-          frames: [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49],
-          next: 'square'
-        },
         ship: {
           frames: [50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69]
-        },
-        sphere: {
-          frames: [70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89],
-          speed: 0.3333333
-        },
-        burst: {
-          frames: [90, 91, 92, 93, 94, 95, 96, 97, 98, 99],
-          next: 'sphere'
         },
         absorb: {
           frames: [100, 101, 102, 103, 104],
@@ -114,6 +95,37 @@ class Player {
     this.entity.gotoAndPlay(this.properties.form.animations.idle);
 
     this.stage.addChild(this.entity);
+  }
+
+  exist(delta) {
+    switch(this.properties.formName) {
+      case ActionList[5]:
+        if(this.properties.form.drain.frequency > 0) {
+          this.properties.form.drain.frequency--;
+        } else {
+          this.properties.form.drain.frequency = this.properties.form.drain.defaultFrequency;
+          this.properties.energy -= this.properties.form.drain.amount;
+        }
+
+        break;
+
+      case ActionList[4]:
+      default:
+        if(this.properties.form.recharge.frequency > 0) {
+          this.properties.form.recharge.frequency--;
+        } else {
+          this.properties.form.recharge.frequency = this.properties.form.recharge.defaultFrequency;
+          this.properties.energy += this.properties.form.recharge.amount;
+        }
+
+        break;
+    }
+
+    return {
+      energy: this.properties.energy,
+      health: this.properties.health,
+      bullets: this.properties.bullets
+    };
   }
 
   getCooldowns(form) {
@@ -143,10 +155,16 @@ class Player {
   }
 
   changeForms(form) {
-    this.properties.form = Object.assign({}, forms[form]);
-    this.properties.formName = form;
+    if(form === ActionList[4] && this.properties.energy > 0 || form !== ActionList[4]) {
+      this.properties.form = Object.assign({}, forms[form]);
+      this.properties.formName = form;
 
-    this.entity.gotoAndPlay(this.properties.form.animations.idle);
+      this.entity.gotoAndPlay(this.properties.form.animations.idle);
+
+      return true;
+    }
+
+    return false;
   }
 
   move(action, delta) {
@@ -165,11 +183,13 @@ class Player {
 
       case ActionList[2]:
         this.entity.rotation -= delta * (180 / Math.PI) / 15;
+        this.entity.x -= Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 1.5;
 
         break;
 
       case ActionList[3]:
         this.entity.rotation += delta * (180 / Math.PI) / 15;
+        this.entity.x += Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
 
         break;
 
@@ -178,28 +198,68 @@ class Player {
     }
   }
 
-  use(bullets) {
+  takeHit(dmg) {
     switch(this.properties.formName) {
-      //bullet power
-      case ActionList[6]:
-        const bullet = new Bullet(this.properties.bullet, this.entity, { type: 'player' });
+      case ActionList[5]:
+        if(this.properties.energy > 0) {
+          this.properties.energy - 10
+        }
 
-        this.stage.addChild(bullet.entity);
+        if(this.properties.bullets < this.properties.maxBullets) {
+          this.properties.bullets++;
+        }
 
-        bullets.push(bullet);
+        if(this.properties.energy <= 0) {
+          this.changeForms(ActionList[4]);
+        }
 
         break;
 
-      //shield power
       case ActionList[4]:
-      case ActionList[7]:
-      case ActionList[5]:
-        this.entity.gotoAndPlay(this.properties.form.animations.action);
+      default:
+        this.properties.health -= dmg;
 
         break;
     }
 
-    return bullets;
+    if(this.properties.health <= 0) {
+      console.log('Player destroyed');
+    }
+  }
+
+  use(bullets) {
+    switch(this.properties.formName) {
+      //absorb power
+      case ActionList[5]:
+        if(this.properties.energy > 0) {
+          this.entity.gotoAndPlay(this.properties.form.animations.action);
+          this.properties.energy -= this.properties.form.energyDrain;
+          this.properties.bullets += this.properties.form.generateBullets;
+        }
+
+        break;
+
+      //bullet power
+      case ActionList[4]:
+      default:
+        if(this.properties.bullets > 0) {
+          this.properties.bullets--;
+
+          const bullet = new Bullet(this.properties.bullet, this.entity, this.stage, { type: 'player' });
+
+          this.stage.addChild(bullet.entity);
+
+          bullets.push(bullet);
+        }
+
+        break;
+    }
+
+    return {
+      bullets,
+      playerEnergy: this.properties.energy,
+      playerBullets: this.properties.bullets
+    };
   }
 };
 

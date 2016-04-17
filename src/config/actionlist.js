@@ -3,10 +3,10 @@ const ActionList = [
   'MOVE_DOWN',
   'MOVE_LEFT',
   'MOVE_RIGHT',
-  'SHIELD',
-  'ABSORB',
+  //'SHIELD',
   'BULLET',
-  'BURST',
+  'ABSORB',
+  //'BURST',
   'USE_POWER',
   'PAUSE'
 ];
