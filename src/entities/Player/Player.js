@@ -50,7 +50,9 @@ const defaults = {
   energy: 1000,
   maxBullets: 250,
   bullets: 25,
-  lives: 3
+  lives: 3,
+  score: 0,
+  lost: false
 };
 
 class Player {
@@ -84,6 +86,10 @@ class Player {
 
     this.entity = new createjs.Sprite(spritesheet);
 
+    this.generateShip();
+  }
+
+  generateShip() {
     this.entity.setBounds((640 / 2 - 32 / 2), (480 / 2 - 32 / 2), 32, 32);
 
     this.entity.x = 640 / 2 - 32 / 2;
@@ -92,174 +98,217 @@ class Player {
     this.entity.regX = 32 / 2;
     this.entity.regX = 32 / 3;
 
+    this.properties.health = 1000;
+    this.properties.energy =200;
+    this.properties.bullets = 25;
+
     this.entity.gotoAndPlay(this.properties.form.animations.idle);
 
     this.stage.addChild(this.entity);
   }
 
   exist(delta) {
-    switch(this.properties.formName) {
-      case ActionList[5]:
-        if(this.properties.form.drain.frequency > 0) {
-          this.properties.form.drain.frequency--;
-        } else {
-          this.properties.form.drain.frequency = this.properties.form.drain.defaultFrequency;
-          this.properties.energy -= this.properties.form.drain.amount;
-        }
+    if(!this.properties.lost && !createjs.Ticker.paused) {
+      switch(this.properties.formName) {
+        case ActionList[5]:
+          if(this.properties.form.drain.frequency > 0) {
+            this.properties.form.drain.frequency--;
+          } else {
+            this.properties.form.drain.frequency = this.properties.form.drain.defaultFrequency;
+            this.properties.energy -= this.properties.form.drain.amount;
+          }
 
-        break;
+          if(this.properties.energy <= 0) {
+            this.changeForms(ActionList[4]);
+          }
 
-      case ActionList[4]:
-      default:
-        if(this.properties.form.recharge.frequency > 0) {
-          this.properties.form.recharge.frequency--;
-        } else {
-          this.properties.form.recharge.frequency = this.properties.form.recharge.defaultFrequency;
-          this.properties.energy += this.properties.form.recharge.amount;
-        }
+          break;
 
-        break;
+        case ActionList[4]:
+        default:
+          if(this.properties.form.recharge.frequency > 0) {
+            this.properties.form.recharge.frequency--;
+          } else {
+            this.properties.form.recharge.frequency = this.properties.form.recharge.defaultFrequency;
+            this.properties.energy += this.properties.form.recharge.amount;
+          }
+
+          break;
+      }
+
+      return {
+        energy: this.properties.energy,
+        health: this.properties.health,
+        bullets: this.properties.bullets
+      };
     }
-
-    return {
-      energy: this.properties.energy,
-      health: this.properties.health,
-      bullets: this.properties.bullets
-    };
   }
 
   getCooldowns(form) {
-    const delay = this.properties.formList[form].delay;
-    const transformDelay = this.properties.formList[form].transformDelay;
+    if(!this.properties.lost) {
+      const delay = this.properties.formList[form].delay;
+      const transformDelay = this.properties.formList[form].transformDelay;
 
-    return {
-      delay,
-      transformDelay
-    };
+      return {
+        delay,
+        transformDelay
+      };
+    }
   }
 
   resetCooldowns(form, transform = false) {
-    let type = 'delay';
-    let typeDefault = 'defaultDelay';
+    if(!this.properties.lost) {
+      let type = 'delay';
+      let typeDefault = 'defaultDelay';
 
-    if(transform) {
-      type = 'transformDelay';
-      typeDefault = 'defaultTransformDelay';
+      if(transform) {
+        type = 'transformDelay';
+        typeDefault = 'defaultTransformDelay';
+      }
+
+      this.properties.formList[form][type] = this.properties.formList[form][typeDefault];
     }
-
-    this.properties.formList[form][type] = this.properties.formList[form][typeDefault];
   }
 
   resetDelay() {
-    this.properties.formList.delay = this.properties.formList.defaultDelay;
+    if(!this.properties.lost) {
+      this.properties.formList.delay = this.properties.formList.defaultDelay;
+    }
   }
 
   changeForms(form) {
-    if(form === ActionList[4] && this.properties.energy > 0 || form !== ActionList[4]) {
-      this.properties.form = Object.assign({}, forms[form]);
-      this.properties.formName = form;
+    if(!this.properties.lost) {
+      if(form === ActionList[4] && this.properties.energy > 0 || form == ActionList[5]) {
+        this.properties.form = Object.assign({}, forms[form]);
+        this.properties.formName = form;
 
-      this.entity.gotoAndPlay(this.properties.form.animations.idle);
+        this.entity.gotoAndPlay(this.properties.form.animations.idle);
 
-      return true;
+        return true;
+      }
+
+      return false;
     }
-
-    return false;
   }
 
   move(action, delta) {
-    switch(action) {
-      case ActionList[0]:
-        this.entity.x -= Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
-        this.entity.y -= Math.cos(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
+    if(!this.properties.lost) {
+      switch(action) {
+        case ActionList[0]:
+          this.entity.x -= Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
+          this.entity.y -= Math.cos(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
 
-        break;
+          break;
 
-      case ActionList[1]:
-        this.entity.x += Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
-        this.entity.y += Math.cos(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
+        case ActionList[1]:
+          this.entity.x += Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
+          this.entity.y += Math.cos(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
 
-        break;
+          break;
 
-      case ActionList[2]:
-        this.entity.rotation -= delta * (180 / Math.PI) / 15;
-        this.entity.x -= Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 1.5;
+        case ActionList[2]:
+          this.entity.rotation -= delta * (180 / Math.PI) / 15;
+          this.entity.x -= Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 1.5;
 
-        break;
+          break;
 
-      case ActionList[3]:
-        this.entity.rotation += delta * (180 / Math.PI) / 15;
-        this.entity.x += Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
+        case ActionList[3]:
+          this.entity.rotation += delta * (180 / Math.PI) / 15;
+          this.entity.x += Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
 
-        break;
+          break;
 
-      default:
-        break;
+        default:
+          break;
+      }
     }
   }
 
   takeHit(dmg) {
-    switch(this.properties.formName) {
-      case ActionList[5]:
-        if(this.properties.energy > 0) {
-          this.properties.energy - 10
+    if(!this.properties.lost) {
+      if(dmg) {
+        switch(this.properties.formName) {
+          case ActionList[5]:
+            if(this.properties.energy > 0) {
+              this.properties.energy - 10
+            }
+
+            if(this.properties.bullets < this.properties.maxBullets) {
+              this.properties.bullets++;
+            }
+
+            if(this.properties.energy <= 0) {
+              this.changeForms(ActionList[4]);
+            }
+
+            break;
+
+          case ActionList[4]:
+          default:
+            this.properties.health -= dmg;
+
+            break;
         }
+      }
 
-        if(this.properties.bullets < this.properties.maxBullets) {
-          this.properties.bullets++;
-        }
-
-        if(this.properties.energy <= 0) {
-          this.changeForms(ActionList[4]);
-        }
-
-        break;
-
-      case ActionList[4]:
-      default:
-        this.properties.health -= dmg;
-
-        break;
+      if(this.properties.health <= 0) {
+        this.destroy();
+      }
     }
+  }
 
-    if(this.properties.health <= 0) {
-      console.log('Player destroyed');
+  destroy() {
+    this.stage.removeChild(this.entity);
+
+    this.properties.lives--;
+
+    if(this.properties.lives >= 0) {
+      this.generateShip();
+    } else {
+      this.properties.lost = true;
     }
   }
 
   use(bullets) {
-    switch(this.properties.formName) {
-      //absorb power
-      case ActionList[5]:
-        if(this.properties.energy > 0) {
-          this.entity.gotoAndPlay(this.properties.form.animations.action);
-          this.properties.energy -= this.properties.form.energyDrain;
-          this.properties.bullets += this.properties.form.generateBullets;
-        }
+    if(!this.properties.lost) {
+      switch(this.properties.formName) {
+        //absorb power
+        case ActionList[5]:
+          if(this.properties.energy > 0 && this.properties.energy > this.properties.form.energyDrain && this.properties.bullets < this.properties.maxBullets) {
+            this.entity.gotoAndPlay(this.properties.form.animations.action);
 
-        break;
+            this.properties.energy -= this.properties.form.energyDrain;
+            this.properties.bullets += (this.properties.bullets + this.properties.form.generateBullets > this.properties.maxBullets) ? this.properties.maxBullets - this.properties.bullets : this.properties.form.generateBullets;
+          }
 
-      //bullet power
-      case ActionList[4]:
-      default:
-        if(this.properties.bullets > 0) {
-          this.properties.bullets--;
+          if(this.properties.energy <= 0) {
+            this.changeForms(ActionList[4]);
+          }
 
-          const bullet = new Bullet(this.properties.bullet, this.entity, this.stage, { type: 'player' });
+          break;
 
-          this.stage.addChild(bullet.entity);
+        //bullet power
+        case ActionList[4]:
+        default:
+          if(this.properties.bullets > 0) {
+            this.properties.bullets--;
 
-          bullets.push(bullet);
-        }
+            const bullet = new Bullet(this.properties.bullet, this.entity, this.stage, { type: 'player', dmg: 30 });
 
-        break;
+            this.stage.addChild(bullet.entity);
+
+            bullets.push(bullet);
+          }
+
+          break;
+      }
+
+      return {
+        bullets,
+        playerEnergy: this.properties.energy,
+        playerBullets: this.properties.bullets
+      };
     }
-
-    return {
-      bullets,
-      playerEnergy: this.properties.energy,
-      playerBullets: this.properties.bullets
-    };
   }
 };
 

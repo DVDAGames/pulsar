@@ -10,7 +10,7 @@
     "copy:templates": "copyfiles -u 2 src/templates/package.json app/",
     "copy:images": "copyfiles -u 2 'src/images/*' app/assets/",
     "copy:easeljs": "copyfiles -u 3 bower_components/EaselJS/lib/easeljs-0.8.2.min.js app/assets/",
-    "copy:preloadjs": "copyfiles -u 3 bower_components/PreloadJS/lib/preloadjs-0.6.2.min.js app/assets",
+    "copy:preloadjs": "copyfiles -u 3 bower_components/PreloadJS/lib/preloadjs-0.6.2.min.js app/assets/",
     "copy:createjs": "npm run copy:easeljs & npm run copy:preloadjs",
     "electron": "electron .",
     "server": "node ./app/server.js",

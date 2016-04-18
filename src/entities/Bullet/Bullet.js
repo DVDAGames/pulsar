@@ -2,7 +2,7 @@ const createjs = window.createjs;
 
 const defaults = {
   speed: 10,
-  dmg: 25,
+  dmg: 5,
   hitTestDelay: 400
 };
 

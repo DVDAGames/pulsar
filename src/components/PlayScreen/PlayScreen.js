@@ -60,6 +60,8 @@ class PlayScreen extends Component {
   constructor(props) {
     super(props);
 
+    this.tick = this.tick.bind(this);
+
     this.state = {
       gameStarted: false,
       gameOver: false,
@@ -73,7 +75,7 @@ class PlayScreen extends Component {
       playerMaxBullets: 250,
       numberOfPlayers: 1,
       numberOfLives: 3,
-      maxNumberOfEnemies: 20,
+      maxNumberOfEnemies: 5,
       lastEnemySpawnPosition: null,
       controllers: [],
       playUsing: 'gamepad',
@@ -180,7 +182,8 @@ class PlayScreen extends Component {
     });
 
     this.setState({
-      cooldowns: this.state.cooldowns
+      cooldowns: this.state.cooldowns,
+      gameStarted: true
     });
 
     stage.update();
@@ -188,7 +191,7 @@ class PlayScreen extends Component {
     createjs.Ticker.setFPS(60);
     createjs.Ticker.useRAF = true;
     createjs.Ticker.addEventListener('tick', stage);
-    createjs.Ticker.addEventListener('tick', this.tick.bind(this));
+    createjs.Ticker.addEventListener('tick', this.tick);
   }
 
   pollGamepads() {
@@ -316,13 +319,24 @@ class PlayScreen extends Component {
   }
 
   spawnEnemy() {
-    const types = [
-      'enemy'
+    const AITypes = [
+      /*{
+        personality: 'chaser',
+        delay: 20
+      },*/
+      {
+        personality: 'little-circle',
+        delay: 15
+      }/*,
+      {
+        personality: 'sentinel',
+        delay: 30
+      }*/
     ];
 
-    const typeRoll = Math.floor(Math.random() * ((types.length - 1) - 0 + 1)) + 0;
+    const AITypeRoll = Math.floor(Math.random() * ((AITypes.length - 1) - 0 + 1)) + 0;
 
-    const type = types[typeRoll];
+    const AIType = AITypes[AITypeRoll];
 
     const positions = [
       {
@@ -365,14 +379,18 @@ class PlayScreen extends Component {
       position = positions[Math.floor(Math.random() * ((positions.length - 1) - 0 + 1)) + 0];
     }
 
-    const bulletTypes = {
-      enemy: assets.enemy_bullet
-    }
-
     const properties = {
-      bullet: bulletTypes[type],
-      type: type
+      bullet: assets.enemy_bullet,
+      AI: AIType.personality,
+      type: 'enemy',
+      delay: AIType.delay
     };
+
+    this.state.lastEnemySpawnPosition = position;
+
+    this.setState({
+      lastEnemySpawnPosition: this.state.lastEnemySpawnPosition
+    });
 
     const enemy = new Enemy(assets.enemy, position, stage, player.entity, properties);
 
@@ -380,176 +398,184 @@ class PlayScreen extends Component {
   }
 
   tick(event) {
-    const delta = event.delta / 1000;
+    if(this.state.gameOver) {
+      createjs.Ticker.removeEventListener('tick', stage);
+      createjs.Ticker.removeEventListener('tick', this.tick);
+    } else {
+      const delta = event.delta / 1000;
 
-    const gamepads = GamepadderUtils.getGamepads();
+      const gamepads = GamepadderUtils.getGamepads();
 
-    this.state.controllers.forEach((inputMethod, index) => {
-      let buttonPresses;
-      let previousButtons;
+      this.state.controllers.forEach((inputMethod, index) => {
+        let buttonPresses;
+        let previousButtons;
 
-      if(inputMethod.controller.name === 'Keyboard') {
-        buttonPresses = inputMethod.controller.keyPresses;
-      } else {
-        const buttonPressObject = inputMethod.controller.checkForButtonPress(gamepads[index]);
+        if(inputMethod.controller.name === 'Keyboard') {
+          buttonPresses = inputMethod.controller.keyPresses;
+        } else {
+          const buttonPressObject = inputMethod.controller.checkForButtonPress(gamepads[index]);
 
-        buttonPresses = buttonPressObject.buttonPresses;
-        previousButtons = buttonPressObject.previousButtons
-      }
+          buttonPresses = buttonPressObject.buttonPresses;
+          previousButtons = buttonPressObject.previousButtons
+        }
 
-      if(buttonPresses) {
-        for(const pressedButton in buttonPresses) {
-          if(buttonPresses.hasOwnProperty(pressedButton)) {
-            if(buttonPresses[pressedButton] && inputMethod.buttonMap.map.hasOwnProperty(pressedButton)) {
-              const actionName = inputMethod.buttonMap.map[pressedButton];
+        if(buttonPresses) {
+          for(const pressedButton in buttonPresses) {
+            if(buttonPresses.hasOwnProperty(pressedButton)) {
+              if(buttonPresses[pressedButton] && inputMethod.buttonMap.map.hasOwnProperty(pressedButton)) {
+                const actionName = inputMethod.buttonMap.map[pressedButton];
 
-              const movementDelta = delta * 100;
+                const movementDelta = delta * 100;
 
-              switch(actionName) {
-                //MOVE_UP
-                //MOVE_DOWN
-                //MOVE_LEFT
-                //MOVE_RIGHT
-                case ActionList[0]:
-                case ActionList[1]:
-                case ActionList[2]:
-                case ActionList[3]:
-                  if(!createjs.Ticker.paused) {
-                    player.move(actionName, movementDelta);
-                  }
-
-                  break;
-
-                //ABSORB
-                //BULLET
-                case ActionList[4]:
-                case ActionList[5]:
-                  if(!createjs.Ticker.paused && !this.state.cooldowns[this.state.currentPower].transformDelayActive) {
-                    const transformed = player.changeForms(actionName);
-
-                    if(transformed) {
-                      this.state.currentPower = actionName;
-
-                      this.setState({
-                        currentPower: this.state.currentPower
-                      });
+                switch(actionName) {
+                  //MOVE_UP
+                  //MOVE_DOWN
+                  //MOVE_LEFT
+                  //MOVE_RIGHT
+                  case ActionList[0]:
+                  case ActionList[1]:
+                  case ActionList[2]:
+                  case ActionList[3]:
+                    if(!createjs.Ticker.paused) {
+                      player.move(actionName, movementDelta);
                     }
-                  }
 
-                  break;
+                    break;
 
-                //USE_POWER
-                case ActionList[6]:
-                  if(!createjs.Ticker.paused && !this.state.cooldowns[this.state.currentPower].delayActive) {
-                    const { delay, transformDelay } = player.getCooldowns(this.state.currentPower);
-                    const delayActive = true;
-                    const transformDelayActive = true;
+                  //ABSORB
+                  //BULLET
+                  case ActionList[4]:
+                  case ActionList[5]:
+                    if(!createjs.Ticker.paused && !this.state.cooldowns[this.state.currentPower].transformDelayActive) {
+                      const transformed = player.changeForms(actionName);
 
-                    this.state.cooldowns[this.state.currentPower] = {
-                      delayActive,
-                      transformDelayActive,
-                      delay,
-                      transformDelay
-                    };
+                      if(transformed) {
+                        this.state.currentPower = actionName;
 
-                    const playerValues = player.use(bullets);
+                        this.setState({
+                          currentPower: this.state.currentPower
+                        });
+                      }
+                    }
 
-                    bullets = playerValues.bullets;
+                    break;
 
-                    this.setState({
-                      playerEnergy: playerValues.playerEnergy,
-                      playerBullets: playerValues.playerBullets
-                    });
-                  }
+                  //USE_POWER
+                  case ActionList[6]:
+                    if(!createjs.Ticker.paused && !this.state.cooldowns[this.state.currentPower].delayActive) {
+                      const { delay, transformDelay } = player.getCooldowns(this.state.currentPower);
 
-                  break;
+                      if(this.state.currentPower === ActionList[5] && this.state.playerBullets < this.state.playerMaxBullets && this.state.playerEnergy > player.properties.formList[ActionList[5]].energyDrain || this.state.currentPower === ActionList[4]) {
+                        const delayActive = true;
+                        const transformDelayActive = true;
 
-                //PAUSE
-                case ActionList[7]:
-                  createjs.Ticker.paused = !createjs.Ticker.paused;
+                        this.state.cooldowns[this.state.currentPower] = {
+                          delayActive,
+                          transformDelayActive,
+                          delay,
+                          transformDelay
+                        };
 
-                  this.state.gamePaused = !this.state.gamePaused;
+                        const playerValues = player.use(bullets);
 
-                default:
-                  break;
+                        bullets = playerValues.bullets;
+
+                        this.setState({
+                          playerEnergy: playerValues.playerEnergy,
+                          playerBullets: playerValues.playerBullets
+                        });
+                      }
+                    }
+
+                    break;
+
+                  //PAUSE
+                  case ActionList[7]:
+                    createjs.Ticker.paused = !createjs.Ticker.paused;
+
+                    this.state.gamePaused = !this.state.gamePaused;
+
+                  default:
+                    break;
+                }
               }
             }
           }
         }
-      }
-    });
+      });
 
-    for(const power in this.state.cooldowns) {
-      if(this.state.cooldowns.hasOwnProperty(power)) {
-        if(this.state.cooldowns[power].delay > 0 && this.state.cooldowns[power].delayActive) {
-          this.state.cooldowns[power].delay--;
-        } else {
-          this.state.cooldowns[power].delay = player.properties.formList[power].defaultDelay;
-          this.state.cooldowns[power].delayActive = false;
-        }
-
-        if(this.state.cooldowns[power].transformDelay > 0 && this.state.cooldowns[power].transformDelayActive) {
-          this.state.cooldowns[power].transformDelay--;
-        } else {
-          this.state.cooldowns[power].transformDelay = player.properties.formList[power].defaultTransformDelay;
-          this.state.cooldowns[power].transformDelayActive = false;
-        }
-      }
-    }
-
-    if(enemies.length < this.state.maxNumberOfEnemies) {
-      const rng = Math.floor(Math.random() * (100 - 1 + 1)) + 1;
-
-      if(rng > 70) {
-        this.spawnEnemy();
-      }
-    } else {
-      enemies.forEach((enemy, index, array) => {
-        if(enemy.properties.destroyed) {
-          array.splice(index, 1);
-        } else {
-          enemy.move(player.entity, delta, [player, ...enemies]);
-
-          if(enemy.properties.delay > 0 && enemy.properties.fired) {
-            enemy.properties.delay--;
+      for(const power in this.state.cooldowns) {
+        if(this.state.cooldowns.hasOwnProperty(power)) {
+          if(this.state.cooldowns[power].delay > 0 && this.state.cooldowns[power].delayActive) {
+            this.state.cooldowns[power].delay--;
           } else {
-            enemy.properties.delay = enemy.properties.defaultDelay;
-            enemy.properties.fired = false;
+            this.state.cooldowns[power].delay = player.properties.formList[power].defaultDelay;
+            this.state.cooldowns[power].delayActive = false;
+          }
 
-            enemy.fireShot(bullets);
+          if(this.state.cooldowns[power].transformDelay > 0 && this.state.cooldowns[power].transformDelayActive) {
+            this.state.cooldowns[power].transformDelay--;
+          } else {
+            this.state.cooldowns[power].transformDelay = player.properties.formList[power].defaultTransformDelay;
+            this.state.cooldowns[power].transformDelayActive = false;
           }
         }
+      }
+
+      if(enemies.length < this.state.maxNumberOfEnemies) {
+        const rng = Math.floor(Math.random() * (100 - 1 + 1)) + 1;
+
+        if(rng > 70) {
+          this.spawnEnemy();
+        }
+      } else {
+        const removeEnemies = [];
+
+        enemies.forEach((enemy, index) => {
+          if(enemy.properties.destroyed) {
+            removeEnemies.push(enemy);
+          } else {
+            enemy.react(player.entity, delta, [player, ...enemies], bullets);
+          }
+        });
+
+        removeEnemies.forEach((enemy) => {
+          enemies.splice(enemies.indexOf(enemy), 1);
+        });
+      }
+
+      bullets.forEach((bullet, index, array) => {
+        const shoot = bullet.shoot(delta, [player, ...enemies]);
+
+        if(shoot) {
+          array.splice(index, 1);
+        }
+      });
+
+      stars.forEach((star) => {
+        star.drift(delta);
+      });
+
+      player.exist(delta);
+
+      this.setState({
+        gameOver: player.properties.lost,
+        gameStarted: !player.properties.lost,
+        playerHealth: player.properties.health,
+        playerEnergy: player.properties.energy,
+        playerBullets: player.properties.bullets,
+        cooldowns: this.state.cooldowns,
+        gamePaused: this.state.gamePaused
       });
     }
-
-    bullets.forEach((bullet, index, array) => {
-      const shoot = bullet.shoot(delta, [player, ...enemies]);
-
-      if(shoot) {
-        array.splice(index, 1);
-      }
-    });
-
-    stars.forEach((star) => {
-      star.drift(delta);
-    });
-
-    player.exist(delta);
-
-    this.setState({
-      playerHealth: player.properties.health,
-      playerEnergy: player.properties.energy,
-      playerBullets: player.properties.bullets,
-      cooldowns: this.state.cooldowns,
-      gamePaused: this.state.gamePaused
-    });
   }
 
   render() {
     return (
       <div className="game-screen game-screen--play-screen">
 
-        {(createjs.Ticker.paused) ? <h3 class="game-screen-message game-screen-message--paused">PAUSED</h3> : ''}
+        {(createjs.Ticker.paused) ? <div class="game-screen-overlay game-screen-overlay--paused"><p>PAUSED</p></div> : ''}
+        {(this.state.gameOver) ? <div class="game-screen-overlay game-screen-overlay--game-over"><p>GAME OVER</p></div> : ''}
 
         <HUD {...this.state} />
       </div>
