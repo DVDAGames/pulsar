@@ -43,6 +43,27 @@ const preload = [
   }
 ];
 
+const AITypes = [
+  {
+    personality: 'chaser',
+    delay: 50,
+    defaultDelay: 50,
+    pts: 50
+  },
+  {
+    personality: 'little-circle',
+    delay: 45,
+    defaultDelay: 45,
+    pts: 75
+  },
+  {
+    personality: 'sentinel',
+    delay: 40,
+    defaultDelay: 40,
+    pts: 25
+  }
+];
+
 const createjs = window.createjs;
 
 let assets = {};
@@ -72,19 +93,16 @@ class PlayScreen extends Component {
       playerHealth: 1000,
       playerEnergy: 200,
       playerBullets: 25,
-      playerMaxBullets: 250,
+      playerMaxBullets: 100,
       numberOfPlayers: 1,
       numberOfLives: 3,
-      maxNumberOfEnemies: 5,
+      maxNumberOfEnemies: 20,
       lastEnemySpawnPosition: null,
       controllers: [],
       playUsing: 'gamepad',
       controlsChosen: false,
       currentPower: ActionList[4],
-      cooldowns: {
-        [ActionList[4]]: {},
-        [ActionList[5]]: {}
-      }
+      cooldowns: {}
     };
   }
 
@@ -173,7 +191,7 @@ class PlayScreen extends Component {
       const delayActive = false;
       const transformDelayActive = false;
 
-      this.state.cooldowns[this.state.currentPower] = {
+      this.state.cooldowns[power] = {
         delayActive,
         transformDelayActive,
         delay,
@@ -182,7 +200,7 @@ class PlayScreen extends Component {
     });
 
     this.setState({
-      cooldowns: this.state.cooldowns,
+      cooldowns: player.cooldowns,
       gameStarted: true
     });
 
@@ -319,21 +337,6 @@ class PlayScreen extends Component {
   }
 
   spawnEnemy() {
-    const AITypes = [
-      /*{
-        personality: 'chaser',
-        delay: 20
-      },*/
-      {
-        personality: 'little-circle',
-        delay: 15
-      }/*,
-      {
-        personality: 'sentinel',
-        delay: 30
-      }*/
-    ];
-
     const AITypeRoll = Math.floor(Math.random() * ((AITypes.length - 1) - 0 + 1)) + 0;
 
     const AIType = AITypes[AITypeRoll];
@@ -383,7 +386,9 @@ class PlayScreen extends Component {
       bullet: assets.enemy_bullet,
       AI: AIType.personality,
       type: 'enemy',
-      delay: AIType.delay
+      delay: AIType.delay,
+      defaultDelay: AIType.defaultDelay,
+      pts: AIType.pts
     };
 
     this.state.lastEnemySpawnPosition = position;
@@ -446,7 +451,7 @@ class PlayScreen extends Component {
                   //BULLET
                   case ActionList[4]:
                   case ActionList[5]:
-                    if(!createjs.Ticker.paused && !this.state.cooldowns[this.state.currentPower].transformDelayActive) {
+                    if(!createjs.Ticker.paused) {
                       const transformed = player.changeForms(actionName);
 
                       if(transformed) {
@@ -462,25 +467,14 @@ class PlayScreen extends Component {
 
                   //USE_POWER
                   case ActionList[6]:
-                    if(!createjs.Ticker.paused && !this.state.cooldowns[this.state.currentPower].delayActive) {
-                      const { delay, transformDelay } = player.getCooldowns(this.state.currentPower);
-
-                      if(this.state.currentPower === ActionList[5] && this.state.playerBullets < this.state.playerMaxBullets && this.state.playerEnergy > player.properties.formList[ActionList[5]].energyDrain || this.state.currentPower === ActionList[4]) {
-                        const delayActive = true;
-                        const transformDelayActive = true;
-
-                        this.state.cooldowns[this.state.currentPower] = {
-                          delayActive,
-                          transformDelayActive,
-                          delay,
-                          transformDelay
-                        };
-
+                    if(!createjs.Ticker.paused) {
+                      if(player.properties.formName === ActionList[5] && this.state.playerBullets < this.state.playerMaxBullets && this.state.playerEnergy > player.properties.formList[ActionList[5]].energyDrain || player.properties.formName === ActionList[4]) {
                         const playerValues = player.use(bullets);
 
                         bullets = playerValues.bullets;
 
                         this.setState({
+                          cooldowns: playerValues.cooldowns,
                           playerEnergy: playerValues.playerEnergy,
                           playerBullets: playerValues.playerBullets
                         });
@@ -504,28 +498,10 @@ class PlayScreen extends Component {
         }
       });
 
-      for(const power in this.state.cooldowns) {
-        if(this.state.cooldowns.hasOwnProperty(power)) {
-          if(this.state.cooldowns[power].delay > 0 && this.state.cooldowns[power].delayActive) {
-            this.state.cooldowns[power].delay--;
-          } else {
-            this.state.cooldowns[power].delay = player.properties.formList[power].defaultDelay;
-            this.state.cooldowns[power].delayActive = false;
-          }
-
-          if(this.state.cooldowns[power].transformDelay > 0 && this.state.cooldowns[power].transformDelayActive) {
-            this.state.cooldowns[power].transformDelay--;
-          } else {
-            this.state.cooldowns[power].transformDelay = player.properties.formList[power].defaultTransformDelay;
-            this.state.cooldowns[power].transformDelayActive = false;
-          }
-        }
-      }
-
       if(enemies.length < this.state.maxNumberOfEnemies) {
         const rng = Math.floor(Math.random() * (100 - 1 + 1)) + 1;
 
-        if(rng > 70) {
+        if(rng > 75 || rng < 25) {
           this.spawnEnemy();
         }
       } else {
@@ -545,11 +521,13 @@ class PlayScreen extends Component {
       }
 
       bullets.forEach((bullet, index, array) => {
-        const shoot = bullet.shoot(delta, [player, ...enemies]);
+        const shoot = bullet.shoot(delta, [player, ...enemies], this.state.points);
 
-        if(shoot) {
+        if(shoot.hit) {
           array.splice(index, 1);
         }
+
+        this.state.playerPoints = this.state.playerPoints + shoot.pts;
       });
 
       stars.forEach((star) => {
@@ -559,13 +537,16 @@ class PlayScreen extends Component {
       player.exist(delta);
 
       this.setState({
+        points: this.state.playerPoints,
+        currentForm: player.properties.formName,
         gameOver: player.properties.lost,
         gameStarted: !player.properties.lost,
         playerHealth: player.properties.health,
         playerEnergy: player.properties.energy,
         playerBullets: player.properties.bullets,
-        cooldowns: this.state.cooldowns,
-        gamePaused: this.state.gamePaused
+        cooldowns: player.cooldowns,
+        gamePaused: this.state.gamePaused,
+        numberOfLives: player.properties.lives
       });
     }
   }
@@ -575,7 +556,7 @@ class PlayScreen extends Component {
       <div className="game-screen game-screen--play-screen">
 
         {(createjs.Ticker.paused) ? <div class="game-screen-overlay game-screen-overlay--paused"><p>PAUSED</p></div> : ''}
-        {(this.state.gameOver) ? <div class="game-screen-overlay game-screen-overlay--game-over"><p>GAME OVER</p></div> : ''}
+        {(this.state.gameOver) ? <div class="game-screen-overlay game-screen-overlay--game-over"><p>GAME OVER<br />{this.state.playerPoints}</p></div> : ''}
 
         <HUD {...this.state} />
       </div>

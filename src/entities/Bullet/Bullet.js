@@ -54,6 +54,7 @@ class Bullet {
 
   collisionCheck(objects) {
     let hits = [];
+    let points = 0;
 
     const hit = objects.some((object, index) => {
       let check = object;
@@ -75,7 +76,11 @@ class Bullet {
         }
 
         if(collisionX && collisionY) {
-          object.takeHit(this.properties.dmg);
+          const pts = object.takeHit(this.properties.dmg);
+
+          if(pts) {
+            points += pts;
+          }
 
           return true;
         }
@@ -85,24 +90,28 @@ class Bullet {
     if(hit) {
       this.destroy();
 
-      return true;
+      return {
+        hit: true,
+        pts: points
+      };
     }
 
-    return false;
+    return {
+      hit: false,
+      pts: points
+    };
   }
 
   shoot(delta, entities) {
     if(!createjs.Ticker.paused) {
       const hit = this.collisionCheck(entities);
 
-      this.entity.x -= Math.sin(this.origin.rotation * (Math.PI / -180)) * this.properties.speed;
-      this.entity.y -= Math.cos(this.origin.rotation * (Math.PI / -180)) * this.properties.speed;
-
-      if(hit) {
-        return true;
+      if(!hit.hit) {
+        this.entity.x -= Math.sin(this.origin.rotation * (Math.PI / -180)) * this.properties.speed;
+        this.entity.y -= Math.cos(this.origin.rotation * (Math.PI / -180)) * this.properties.speed;
       }
 
-      return false;
+      return hit;
     }
   }
 

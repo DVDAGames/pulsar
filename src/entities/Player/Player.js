@@ -13,9 +13,9 @@ const forms = {
     drain: {
       freqeuncy: 30,
       defaultFrequency: 30,
-      amount: 1
+      amount: 50
     },
-    energyDrain: 100,
+    energyDrain: 250,
     generateBullets: 25,
     delay: 60,
     transformDelay: 30,
@@ -30,11 +30,11 @@ const forms = {
     recharge: {
       frequency: 60,
       defaultFrequency: 60,
-      amount: 1
+      amount: 100
     },
-    delay: 5,
+    delay: 10,
     transformDelay: 10,
-    defaultDelay: 5,
+    defaultDelay: 10,
     defaultTransformDelay: 10
   }
 };
@@ -58,6 +58,21 @@ const defaults = {
 class Player {
   constructor(bitmap, coords, stage, form = defaultForm, properties = {}) {
     this.properties = Object.assign({}, defaults, properties);
+
+    this.cooldowns = {};
+
+    Object.keys(forms).forEach((power) => {
+      const { delay, transformDelay } = this.getCooldowns(power);
+      const delayActive = false;
+      const transformDelayActive = false;
+
+      this.cooldowns[power] = {
+        delayActive,
+        transformDelayActive,
+        delay,
+        transformDelay
+      };
+    });
 
     this.stage = stage;
 
@@ -99,7 +114,7 @@ class Player {
     this.entity.regX = 32 / 3;
 
     this.properties.health = 1000;
-    this.properties.energy =200;
+    this.properties.energy = 200;
     this.properties.bullets = 25;
 
     this.entity.gotoAndPlay(this.properties.form.animations.idle);
@@ -119,6 +134,7 @@ class Player {
           }
 
           if(this.properties.energy <= 0) {
+            console.log('out of energy');
             this.changeForms(ActionList[4]);
           }
 
@@ -130,13 +146,38 @@ class Player {
             this.properties.form.recharge.frequency--;
           } else {
             this.properties.form.recharge.frequency = this.properties.form.recharge.defaultFrequency;
-            this.properties.energy += this.properties.form.recharge.amount;
+            if(this.properties.energy < this.properties.maxEnergy) {
+              if(this.properties.energy + this.properties.form.recharge.amount < this.properties.maxEnergy) {
+                this.properties.energy += this.properties.form.recharge.amount;
+              } else {
+                this.properties.energy = this.properties.maxEnergy;
+              }
+            }
           }
 
           break;
       }
 
+      for(const power in this.cooldowns) {
+        if(this.cooldowns.hasOwnProperty(power)) {
+          if(this.cooldowns[power].delay > 0 && this.cooldowns[power].delayActive) {
+            this.cooldowns[power].delay--;
+          } else {
+            this.cooldowns[power].delay = this.properties.formList[power].defaultDelay;
+            this.cooldowns[power].delayActive = false;
+          }
+
+          if(this.cooldowns[power].transformDelay > 0 && this.cooldowns[power].transformDelayActive) {
+            this.cooldowns[power].transformDelay--;
+          } else {
+            this.cooldowns[power].transformDelay = this.properties.formList[power].defaultTransformDelay;
+            this.cooldowns[power].transformDelayActive = false;
+          }
+        }
+      }
+
       return {
+        cooldowns: this.cooldowns,
         energy: this.properties.energy,
         health: this.properties.health,
         bullets: this.properties.bullets
@@ -170,17 +211,13 @@ class Player {
     }
   }
 
-  resetDelay() {
-    if(!this.properties.lost) {
-      this.properties.formList.delay = this.properties.formList.defaultDelay;
-    }
-  }
-
   changeForms(form) {
     if(!this.properties.lost) {
-      if(form === ActionList[4] && this.properties.energy > 0 || form == ActionList[5]) {
+      if(form === ActionList[5] && this.properties.energy > 0 || form === ActionList[4]) {
         this.properties.form = Object.assign({}, forms[form]);
         this.properties.formName = form;
+
+        this.resetCooldowns(form);
 
         this.entity.gotoAndPlay(this.properties.form.animations.idle);
 
@@ -208,13 +245,11 @@ class Player {
 
         case ActionList[2]:
           this.entity.rotation -= delta * (180 / Math.PI) / 15;
-          this.entity.x -= Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 1.5;
 
           break;
 
         case ActionList[3]:
           this.entity.rotation += delta * (180 / Math.PI) / 15;
-          this.entity.x += Math.sin(this.entity.rotation * (Math.PI / -180)) * delta * 2.5;
 
           break;
 
@@ -275,10 +310,14 @@ class Player {
         //absorb power
         case ActionList[5]:
           if(this.properties.energy > 0 && this.properties.energy > this.properties.form.energyDrain && this.properties.bullets < this.properties.maxBullets) {
-            this.entity.gotoAndPlay(this.properties.form.animations.action);
+            if(!this.cooldowns[ActionList[5]].delayActive) {
+              this.entity.gotoAndPlay(this.properties.form.animations.action);
 
-            this.properties.energy -= this.properties.form.energyDrain;
-            this.properties.bullets += (this.properties.bullets + this.properties.form.generateBullets > this.properties.maxBullets) ? this.properties.maxBullets - this.properties.bullets : this.properties.form.generateBullets;
+              this.properties.energy -= this.properties.form.energyDrain;
+              this.properties.bullets += (this.properties.bullets + this.properties.form.generateBullets > this.properties.maxBullets) ? this.properties.maxBullets - this.properties.bullets : this.properties.form.generateBullets;
+
+              this.cooldowns[ActionList[5]].delayActive = true;
+            }
           }
 
           if(this.properties.energy <= 0) {
@@ -291,13 +330,17 @@ class Player {
         case ActionList[4]:
         default:
           if(this.properties.bullets > 0) {
-            this.properties.bullets--;
+            if(!this.cooldowns[ActionList[4]].delayActive) {
+              this.properties.bullets--;
 
-            const bullet = new Bullet(this.properties.bullet, this.entity, this.stage, { type: 'player', dmg: 30 });
+              const bullet = new Bullet(this.properties.bullet, this.entity, this.stage, { type: 'player', dmg: 60 });
 
-            this.stage.addChild(bullet.entity);
+              this.stage.addChild(bullet.entity);
 
-            bullets.push(bullet);
+              bullets.push(bullet);
+
+              this.cooldowns[ActionList[4]].delayActive = true;
+            }
           }
 
           break;
@@ -306,7 +349,8 @@ class Player {
       return {
         bullets,
         playerEnergy: this.properties.energy,
-        playerBullets: this.properties.bullets
+        playerBullets: this.properties.bullets,
+        cooldowns: this.cooldowns
       };
     }
   }

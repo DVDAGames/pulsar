@@ -5,12 +5,13 @@ const createjs = window.createjs;
 const defaults = {
   type: 'enemy',
   weakness: 'BULLET',
-  health: 5,
-  delay: 5,
-  defaultDelay: 8,
+  health: 10,
+  delay: 10,
+  defaultDelay: 10,
   fired: false,
   destroyed: false,
-  AI: 'chaser'
+  AI: 'chaser',
+  pts: 20
 };
 
 const AIActions = {
@@ -58,19 +59,23 @@ class Enemy {
     this.stage.addChild(this.entity);
   }
 
-  react(enemy, delta, entities, bullets) {
+  react(enemy, delta, entities, bullets, points) {
     const AI = this.properties.AI;
-
-    if(this.properties.delay > 0 && this.properties.fired) {
-      this.properties.delay--;
-    } else {
-      this.properties.delay = this.properties.defaultDelay;
-      this.properties.fired = false;
-    }
 
     if(AIActions.hasOwnProperty(AI)) {
       AIActions[AI].forEach((action) => {
-        this[action](enemy, delta, entities, bullets);
+        if(action !== 'fireShot') {
+          this[action](enemy, delta, entities, bullets);
+        } else {
+          if(this.properties.delay > 0 && this.properties.fired) {
+            this.properties.delay--;
+          } else {
+            this.properties.delay = this.properties.defaultDelay;
+            this.properties.fired = false;
+
+            this[action](enemy, delta, entities, bullets);
+          }
+        }
       });
     }
   }
@@ -79,17 +84,19 @@ class Enemy {
     if(!createjs.Ticker.paused && !this.properties.destroyed) {
       const angle = (Math.atan2(enemy.y - this.entity.y, enemy.x - this.entity.x)) * (180 / Math.PI) * 2;
 
-      if(this.entity.x > enemy.x) {
-        if(this.entity.y < enemy.y) {
-          this.entity.rotation = angle / 1.5 - 70;
+      if(Math.abs(this.entity.x - enemy.x) > 50 && Math.abs(this.entity.y - enemy.y) > 50) {
+        if(this.entity.x > enemy.x + 50) {
+          if(this.entity.y < enemy.y - 50) {
+            this.entity.rotation = angle / 1.5 - 70;
+          } else {
+            this.entity.rotation = angle / 2 + 70;
+          }
         } else {
-          this.entity.rotation = angle / 2 + 70;
-        }
-      } else {
-        if(this.entity.y < enemy.y) {
-          this.entity.rotation = angle / 1.5 + 70;
-        } else {
-          this.entity.rotation = angle / 1.5 - 70;
+          if(this.entity.y < enemy.y - 50) {
+            this.entity.rotation = angle / 1.5 + 70;
+          } else {
+            this.entity.rotation = angle / 1.5 - 70;
+          }
         }
       }
 
@@ -98,44 +105,32 @@ class Enemy {
   }
 
   littleCircle(enemy, delta, entities, bullets) {
-    const circleRadius = 300;
+    const circleRadius = 150;
 
     if(!this.properties.circleGenerated) {
       const circleG = new createjs.Graphics();
 
-      const circleCenter = {
+      this.properties.circle = {
         x: this.entity.x,
-        y: this.entity.y
+        y: this.entity.y,
+        radius: circleRadius
       };
-
-      circleG
-        .beginStroke(createjs.Graphics.getRGB(255, 255, 255))
-        .drawCircle((this.entity.x), (this.entity.y), circleRadius)
-      ;
-
-      const circleS = new createjs.Shape(circleG);
-
-      this.stage.addChild(circleS);
 
       this.properties.circleGenerated = true;
-
-      this.properties.circle = {
-        entity: circleS,
-        center: circleCenter
-      };
-
-      console.log(this.properties.circle);
     }
 
-    const angle = this.trackEnemy(enemy, delta) * 0.002;
+    const angle = this.trackEnemy(enemy, delta) / 120;
 
-    const newX = (this.properties.circle.center.x + Math.cos(angle) * circleRadius);
-    const newY = (this.properties.circle.center.y + Math.sin(angle) * circleRadius);
+    let newX = (this.properties.circle.x + Math.cos(angle) * circleRadius);
+    let newY = (this.properties.circle.y + Math.sin(angle) * circleRadius);
 
-    this.entity.x = newX;
-    this.entity.y = newY;
-
-    //console.log()
+    if(Math.abs(this.entity.x - enemy.x) < 50 && Math.abs(this.entity.y - enemy.y) < 50) {
+      newX = newX - 20;
+      newY = newY - 20;
+    } else {
+      this.entity.x = newX;
+      this.entity.y = newY;
+    }
   }
 
   patrol(enemy, delta) {
@@ -174,8 +169,6 @@ class Enemy {
     }
 
     this.properties.lastClosestEdge = closestEdge;
-
-    console.log('patrolling towards:', closestEdge);
 
     switch(closestEdge) {
       case edges[0]:
@@ -262,12 +255,6 @@ class Enemy {
         if(this.entity.y <= object.entity.y + object.entity._bounds.height && this.entity.y >= object.entity.y || object.entity.y <= this.entity.y + this.entity._bounds.height && object.entity.y >= this.entity.y) {
           collisionY = true;
         }
-
-        if(collisionX && collisionY) {
-          object.takeHit(this.properties.dmg);
-
-          return true;
-        }
       }
     });
 
@@ -280,6 +267,8 @@ class Enemy {
 
       if(this.properties.health <= 0) {
         this.destroy();
+
+        return this.properties.pts;
       }
     }
   }
@@ -289,7 +278,7 @@ class Enemy {
       if(!this.properties.fired) {
         this.properties.fired = true;
 
-        const bullet = new Bullet(this.properties.bullet, this.entity, this.stage, { type: 'enemy', dmg: 5 });
+        const bullet = new Bullet(this.properties.bullet, this.entity, this.stage, { type: 'enemy', dmg: 10 });
 
         this.stage.addChild(bullet.entity);
 
