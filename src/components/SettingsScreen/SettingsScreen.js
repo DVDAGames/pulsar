@@ -11,7 +11,7 @@ class SettingsScreen extends Component {
     return (
       <div className="game-screen game-screen--settings-screen">
         <h2>Settings</h2>
-        <p>remap keys here</p>
+        <p>This isn't currently implemented</p>
       </div>
     );
   }

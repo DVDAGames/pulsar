@@ -2,9 +2,11 @@ import React, { Component } from 'react';
 
 import { Link } from 'react-router';
 
+let pulsarControls = window.pulsarControls;
+
 class MenuScreen extends Component {
-  constructor(props) {
-    super(props);
+  constructor(props, context) {
+    super(props, context);
 
     this.props = props;
   }
@@ -18,7 +20,7 @@ class MenuScreen extends Component {
               <Link to="/game/play">Play Game</Link>
             </li>
             <li>
-              <Link to="/game/settings">Settings</Link>
+              <Link to="/game/help">How To Play</Link>
             </li>
             <li>
               <a href="/game/exit">Exit</a>
@@ -28,6 +30,10 @@ class MenuScreen extends Component {
       </div>
     );
   }
+};
+
+MenuScreen.contextTypes = {
+    router: React.PropTypes.object.isRequired
 };
 
 export default MenuScreen;

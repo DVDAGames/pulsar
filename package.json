@@ -1,6 +1,6 @@
 {
   "name": "pulsar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "LD35 gamejam entry",
   "main": "app/window.js",
   "scripts": {
@@ -9,15 +9,17 @@
     "copy:html": "copyfiles -u 1 src/index.html app/",
     "copy:templates": "copyfiles -u 2 src/templates/package.json app/",
     "copy:images": "copyfiles -u 2 'src/images/*' app/assets/",
+    "copy:sounds": "copyfiles -u 2 'src/sounds/*' app/assets/",
     "copy:easeljs": "copyfiles -u 3 bower_components/EaselJS/lib/easeljs-0.8.2.min.js app/assets/",
     "copy:preloadjs": "copyfiles -u 3 bower_components/PreloadJS/lib/preloadjs-0.6.2.min.js app/assets/",
-    "copy:createjs": "npm run copy:easeljs & npm run copy:preloadjs",
+    "copy:soundjs": "copyfiles -u 3 bower_components/SoundJS/lib/soundjs-0.6.2.min.js app/assets/",
+    "copy:createjs": "npm run copy:easeljs & npm run copy:preloadjs & npm run copy:soundjs",
     "electron": "electron .",
     "server": "node ./app/server.js",
     "watch": "webpack --watch",
     "eslint": "npm run lint",
     "build": "npm run clean && webpack -p",
-    "generate": "npm run copy:main & npm run copy:html & npm run copy:templates & npm run copy:images & npm run copy:createjs",
+    "generate": "npm run copy:main & npm run copy:html & npm run copy:templates & npm run copy:images & npm run copy:createjs & npm run copy:sounds",
     "start": "npm run generate && npm run electron",
     "postinstall": "node_modules/.bin/bower install"
   },

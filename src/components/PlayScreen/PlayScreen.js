@@ -40,31 +40,79 @@ const preload = [
   {
     src: '/assets/star_big.png',
     id: 'star_big'
+  },
+  {
+    src: '/assets/game_over.wav',
+    id: 'sound/game_over'
+  },
+  {
+    src: '/assets/enemy_bullet.wav',
+    id: 'sound/enemy_bullet'
+  },
+  {
+    src: '/assets/enemy_destroyed.wav',
+    id: 'sound/enemy_destroyed'
+  },
+  {
+    src: '/assets/player_absorbed.wav',
+    id: 'sound/player_absorbed'
+  },
+  {
+    src: '/assets/player_bullet.wav',
+    id: 'sound/player_bullet'
+  },
+  {
+    src: '/assets/player_destroyed.wav',
+    id: 'sound/player_destroyed'
+  },
+  {
+    src: '/assets/player_generated_bullets.wav',
+    id: 'sound/player_generated_bullets'
+  },
+  {
+    src: '/assets/player_hit.wav',
+    id: 'sound/player_hit'
+  },
+  {
+    src: '/assets/player_transform.wav',
+    id: 'sound/player_transform'
   }
 ];
 
 const AITypes = [
   {
     personality: 'chaser',
-    delay: 50,
-    defaultDelay: 50,
-    pts: 50
+    delay: 40,
+    defaultDelay: 40,
+    pts: 50,
+    dmg: 50
   },
   {
-    personality: 'little-circle',
-    delay: 45,
-    defaultDelay: 45,
-    pts: 75
+    personality: 'arc',
+    delay: 35,
+    defaultDelay: 35,
+    pts: 75,
+    dmg: 15
   },
   {
     personality: 'sentinel',
-    delay: 40,
-    defaultDelay: 40,
-    pts: 25
+    delay: 30,
+    defaultDelay: 30,
+    pts: 25,
+    dmg: 25
+  },
+  {
+    personality: 'patroller',
+    delay: 30,
+    defaultDelay: 30,
+    pts: 25,
+    dmg: 25
   }
 ];
 
 const createjs = window.createjs;
+
+const puslarControls = window.pulsarControls;
 
 let assets = {};
 let bullets = [];
@@ -78,8 +126,10 @@ const maxStars = 60;
 const minStars = 15;
 
 class PlayScreen extends Component {
-  constructor(props) {
-    super(props);
+  constructor(props, context) {
+    super(props, context);
+
+    this.props = props;
 
     this.tick = this.tick.bind(this);
 
@@ -94,35 +144,42 @@ class PlayScreen extends Component {
       playerEnergy: 200,
       playerBullets: 25,
       playerMaxBullets: 100,
-      numberOfPlayers: 1,
-      numberOfLives: 3,
-      maxNumberOfEnemies: 20,
+      numberOfPlayers: pulsarControls.numberOfPlayers,
+      numberOfLives: 2,
+      maxNumberOfEnemies: 25,
       lastEnemySpawnPosition: null,
-      controllers: [],
-      playUsing: 'gamepad',
-      controlsChosen: false,
+      controllers: pulsarControls.controllers,
+      playUsing: pulsarControls.playUsing,
+      controlsChosen: pulsarControls.controlsChosen,
       currentPower: ActionList[4],
       cooldowns: {}
     };
   }
 
   componentDidMount() {
-    if (!('ongamepadconnected' in window) || GamepadderUtils.getGamepads().length !== this.state.numberOfPlayers) {
-      //No gamepad events available, poll instead.
-      this.checkForGamePadsInterval = setInterval(this.pollGamepads.bind(this), 300);
-    }
-
     this.addListeners();
 
     const queue = new createjs.LoadQueue(false);
 
+    queue.installPlugin(createjs.Sound);
+
     const loaded = () => {
+      assets.sounds = {};
       assets.player = queue.getResult('player');
       assets.player_bullet = queue.getResult('player_bullet');
       assets.enemy = queue.getResult('enemy_standard');
       assets.enemy_bullet = queue.getResult('enemy_bullet');
       assets.star_small = queue.getResult('star_small');
       assets.star_big = queue.getResult('star_big');
+      assets.sounds.game_over = queue.getResult('sound/game_over');
+      assets.sounds.enemy_bullet = queue.getResult('sound/enemy_bullet');
+      assets.sounds.enemy_destroyed = queue.getResult('sound/enemy_destroyed');
+      assets.sounds.player_absorbed = queue.getResult('sound/player_absorbed');
+      assets.sounds.player_bullet = queue.getResult('sound/player_bullet');
+      assets.sounds.player_destroyed = queue.getResult('sound/player_destroyed');
+      assets.sounds.player_generated_bullets = queue.getResult('sound/player_generated_bullets');
+      assets.sounds.player_hit = queue.getResult('sound/player_hit');
+      assets.sounds.player_transform = queue.getResult('sound/player_transform');
 
       this.renderGame();
     };
@@ -170,18 +227,27 @@ class PlayScreen extends Component {
     }
 
     const coords = {
-      x: 640 / 2 - 32 / 2,
-      y: 480 / 2 - 32 / 2
+      x: 960 / 2 - 32 / 2,
+      y: 768 / 2 - 32 / 2
     };
 
     const properties = {
+      lives: this.state.numberOfLives,
       bullet: assets.player_bullet,
       health: this.state.playerHealth,
       energy: this.state.playerEnergy,
       bullets: this.state.playerBullets,
       maxBullets: this.state.playerMaxBullets,
       maxHealth: this.state.playerMaxHealth,
-      maxEnergy: this.state.playerMaxEnergy
+      maxEnergy: this.state.playerMaxEnergy,
+      sounds: {
+        player_absobed: assets.sounds.player_absorbed,
+        player_bullet: assets.sounds.player_bullet,
+        player_destroyed: assets.sounds.player_destroyed,
+        player_generated_bullets: assets.sounds.player_generated_bullets,
+        player_hit: assets.sounds.player_hit,
+        player_transform: assets.sounds.player_transform
+      }
     };
 
     player = new Player(assets.player, coords, stage, this.state.currentPower, properties);
@@ -210,37 +276,6 @@ class PlayScreen extends Component {
     createjs.Ticker.useRAF = true;
     createjs.Ticker.addEventListener('tick', stage);
     createjs.Ticker.addEventListener('tick', this.tick);
-  }
-
-  pollGamepads() {
-    const gamepads = GamepadderUtils.getGamepads();
-
-    if(gamepads.length && gamepads[0]) {
-      this.state.controlsChosen = true;
-      this.state.playUsing = 'gamepad';
-
-      gamepads.forEach((pad, index) => {
-        const controller = new Gamepadder(pad);
-        const buttonMap = new Buttonmancer(ActionMap[this.state.playUsing]);
-
-        if(!this.state.controllers[index]) {
-          this.state.controllers[index] = {
-            controller,
-            buttonMap
-          };
-        }
-      });
-
-      if(gamepads.length === this.state.numberOfPlayers) {
-        clearInterval(this.checkForGamePadsInterval);
-      }
-
-      this.setState({
-        controllers: this.state.controllers,
-        playUsing: this.state.playUsing,
-        controlsChosen: this.state.controlsChosen
-      });
-    }
   }
 
   addListeners() {
@@ -288,30 +323,6 @@ class PlayScreen extends Component {
 
       if(this.state.controlsChosen && this.state.playUsing === 'keyboard') {
         this.state.controllers[0].controller.keyPresses[keyPressed.key] = true;
-      } else if(!this.state.controlsChosen) {
-        clearInterval(this.checkForGamePadsInterval);
-
-        console.log('using keyboard instead of gamepad');
-
-        this.state.playUsing = 'keyboard';
-        this.state.controlsChosen = true;
-
-        const actions = ActionMap[this.state.playUsing];
-
-        this.state.controllers[0] = {
-          controller: {
-            id: 0,
-            name: 'Keyboard',
-            keyPresses: {}
-          },
-          buttonMap: new Buttonmancer(actions)
-        };
-
-        this.setState({
-          playUsing: this.state.playUsing,
-          controllers: this.state.controllers,
-          controlsChosen: this.state.controlsChosen
-        });
       }
     });
 
@@ -348,7 +359,7 @@ class PlayScreen extends Component {
       },
       {
         x: 250,
-        y: 690
+        y: 590
       },
       {
         x: 720,
@@ -364,14 +375,14 @@ class PlayScreen extends Component {
       },
       {
         x: 360,
-        y: -40
+        y: 20
       },
       {
-        x: -40,
+        x: 20,
         y: 220
       },
       {
-        x: 840,
+        x: 780,
         y: 340
       }
     ];
@@ -388,7 +399,11 @@ class PlayScreen extends Component {
       type: 'enemy',
       delay: AIType.delay,
       defaultDelay: AIType.defaultDelay,
-      pts: AIType.pts
+      pts: AIType.pts,
+      sounds: {
+        hit: assets.sounds.enemy_destroyed,
+        fire: assets.sounds.enemy_bullet
+      }
     };
 
     this.state.lastEnemySpawnPosition = position;
@@ -498,56 +513,62 @@ class PlayScreen extends Component {
         }
       });
 
-      if(enemies.length < this.state.maxNumberOfEnemies) {
-        const rng = Math.floor(Math.random() * (100 - 1 + 1)) + 1;
+      if(!createjs.Ticker.paused) {
+        if(enemies.length <= this.state.maxNumberOfEnemies) {
+          const rng = Math.floor(Math.random() * (100 - 1 + 1)) + 1;
 
-        if(rng > 75 || rng < 25) {
-          this.spawnEnemy();
-        }
-      } else {
-        const removeEnemies = [];
-
-        enemies.forEach((enemy, index) => {
-          if(enemy.properties.destroyed) {
-            removeEnemies.push(enemy);
-          } else {
-            enemy.react(player.entity, delta, [player, ...enemies], bullets);
+          if(rng > 75 || rng < 25) {
+            this.spawnEnemy();
           }
+        } else {
+          const removeEnemies = [];
+
+          enemies.forEach((enemy, index) => {
+            if(enemy.properties.destroyed) {
+              removeEnemies.push(enemy);
+            } else {
+              enemy.react(player.entity, delta, [player, ...enemies], bullets);
+            }
+          });
+
+          removeEnemies.forEach((enemy) => {
+            enemies.splice(enemies.indexOf(enemy), 1);
+          });
+        }
+
+        bullets.forEach((bullet, index, array) => {
+          const shoot = bullet.shoot(delta, [player, ...enemies], this.state.points);
+
+          if(shoot.hit) {
+            array.splice(index, 1);
+          }
+
+          this.state.playerPoints = this.state.playerPoints + shoot.pts;
         });
 
-        removeEnemies.forEach((enemy) => {
-          enemies.splice(enemies.indexOf(enemy), 1);
+        stars.forEach((star) => {
+          star.drift(delta);
+        });
+
+        player.exist(delta);
+
+        if(player.properties.lost) {
+          createjs.Sound.play('sound/game_over');
+        }
+
+        this.setState({
+          points: this.state.playerPoints,
+          currentForm: player.properties.formName,
+          gameOver: player.properties.lost,
+          gameStarted: !player.properties.lost,
+          playerHealth: player.properties.health,
+          playerEnergy: player.properties.energy,
+          playerBullets: player.properties.bullets,
+          cooldowns: player.cooldowns,
+          gamePaused: this.state.gamePaused,
+          numberOfLives: player.properties.lives
         });
       }
-
-      bullets.forEach((bullet, index, array) => {
-        const shoot = bullet.shoot(delta, [player, ...enemies], this.state.points);
-
-        if(shoot.hit) {
-          array.splice(index, 1);
-        }
-
-        this.state.playerPoints = this.state.playerPoints + shoot.pts;
-      });
-
-      stars.forEach((star) => {
-        star.drift(delta);
-      });
-
-      player.exist(delta);
-
-      this.setState({
-        points: this.state.playerPoints,
-        currentForm: player.properties.formName,
-        gameOver: player.properties.lost,
-        gameStarted: !player.properties.lost,
-        playerHealth: player.properties.health,
-        playerEnergy: player.properties.energy,
-        playerBullets: player.properties.bullets,
-        cooldowns: player.cooldowns,
-        gamePaused: this.state.gamePaused,
-        numberOfLives: player.properties.lives
-      });
     }
   }
 
@@ -555,13 +576,17 @@ class PlayScreen extends Component {
     return (
       <div className="game-screen game-screen--play-screen">
 
-        {(createjs.Ticker.paused) ? <div class="game-screen-overlay game-screen-overlay--paused"><p>PAUSED</p></div> : ''}
-        {(this.state.gameOver) ? <div class="game-screen-overlay game-screen-overlay--game-over"><p>GAME OVER<br />{this.state.playerPoints}</p></div> : ''}
+        {(createjs.Ticker.paused || this.state.gamePaused) ? <div className="game-screen-overlay game-screen-overlay--paused"><p>PAUSED</p></div> : ''}
+        {(this.state.gameOver) ? <div className="game-screen-overlay game-screen-overlay--game-over"><p>GAME OVER</p><p>Score: {this.state.playerPoints}</p></div> : ''}
 
         <HUD {...this.state} />
       </div>
     );
   }
+};
+
+PlayScreen.contextTypes = {
+    router: React.PropTypes.object.isRequired
 };
 
 export default PlayScreen;

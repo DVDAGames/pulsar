@@ -78,11 +78,11 @@ app.on('will-finish-launching', () => {
 
 app.on('ready', () => {
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600
+    width: 960,
+    height: 768
   });
 
-  mainWindow.loadURL(`http://localhost:${port}/game/play`);
+  mainWindow.loadURL(`http://localhost:${port}/`);
 
   mainWindow.on('closed', () => {
     mainWindow = null;

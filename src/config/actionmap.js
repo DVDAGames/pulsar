@@ -12,10 +12,10 @@ const ActionMap = {
     [ActionList[7]]: [9]
   },
   keyboard: {
-    [ActionList[0]]: ['ArrowUp', 'W'],
-    [ActionList[1]]: ['ArrowDown', 'S'],
-    [ActionList[2]]: ['ArrowLeft', 'A'],
-    [ActionList[3]]: ['ArrowRight', 'D'],
+    [ActionList[0]]: ['ArrowUp'],
+    [ActionList[1]]: ['ArrowDown'],
+    [ActionList[2]]: ['ArrowLeft'],
+    [ActionList[3]]: ['ArrowRight'],
     [ActionList[4]]: ['Digit1'],
     [ActionList[5]]: ['Digit2'],
     [ActionList[6]]: ['Space'],

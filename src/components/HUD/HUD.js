@@ -14,9 +14,7 @@ class HUD extends Component {
   }
 
   render() {
-    let powers;
-
-    const cooldowns = Object.keys(this.props.cooldowns).map((power, index) => {
+    /*const cooldowns = Object.keys(this.props.cooldowns).map((power, index) => {
       const powerName = power;
       const { delay, transformDelay, delayActive, transformDelayActive } = this.props.cooldowns[power];
 
@@ -33,13 +31,10 @@ class HUD extends Component {
           <Cooldown {...data} />
         </li>
       );
-    });
+    });*/
 
     return (
       <div className="game-hud">
-        <ul className="game-hud-list game-hud-list--cooldowns">
-          {cooldowns}
-        </ul>
         <Stats lives={this.props.numberOfLives} points={this.props.playerPoints} bullets={this.props.playerBullets} maxBullets={this.props.playerMaxBullets} health={this.props.playerHealth} maxHealth={this.props.playerMaxHealth} energy={this.props.playerEnergy} maxEnergy={this.props.playerMaxEnergy} />
       </div>
     );

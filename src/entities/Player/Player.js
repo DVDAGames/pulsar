@@ -104,11 +104,15 @@ class Player {
     this.generateShip();
   }
 
+  playSound(id) {
+    createjs.Sound.play(`sound/${id}`);
+  }
+
   generateShip() {
     this.entity.setBounds((640 / 2 - 32 / 2), (480 / 2 - 32 / 2), 32, 32);
 
-    this.entity.x = 640 / 2 - 32 / 2;
-    this.entity.y = 480 / 2 - 32 / 2;
+    this.entity.x = 960 / 2 - 32 / 2;
+    this.entity.y = 768 / 2 - 32 / 2;
 
     this.entity.regX = 32 / 2;
     this.entity.regX = 32 / 3;
@@ -134,7 +138,6 @@ class Player {
           }
 
           if(this.properties.energy <= 0) {
-            console.log('out of energy');
             this.changeForms(ActionList[4]);
           }
 
@@ -219,6 +222,8 @@ class Player {
 
         this.resetCooldowns(form);
 
+        this.playSound('player_transform');
+
         this.entity.gotoAndPlay(this.properties.form.animations.idle);
 
         return true;
@@ -270,6 +275,8 @@ class Player {
 
             if(this.properties.bullets < this.properties.maxBullets) {
               this.properties.bullets++;
+
+              this.playSound('player_absorbed');
             }
 
             if(this.properties.energy <= 0) {
@@ -281,6 +288,8 @@ class Player {
           case ActionList[4]:
           default:
             this.properties.health -= dmg;
+
+            this.playSound('player_hit');
 
             break;
         }
@@ -294,6 +303,8 @@ class Player {
 
   destroy() {
     this.stage.removeChild(this.entity);
+
+    this.playSound('player_destroyed');
 
     this.properties.lives--;
 
@@ -311,6 +322,7 @@ class Player {
         case ActionList[5]:
           if(this.properties.energy > 0 && this.properties.energy > this.properties.form.energyDrain && this.properties.bullets < this.properties.maxBullets) {
             if(!this.cooldowns[ActionList[5]].delayActive) {
+              this.playSound('player_generated_bullets');
               this.entity.gotoAndPlay(this.properties.form.animations.action);
 
               this.properties.energy -= this.properties.form.energyDrain;
@@ -332,6 +344,8 @@ class Player {
           if(this.properties.bullets > 0) {
             if(!this.cooldowns[ActionList[4]].delayActive) {
               this.properties.bullets--;
+
+              this.playSound('player_bullet');
 
               const bullet = new Bullet(this.properties.bullet, this.entity, this.stage, { type: 'player', dmg: 60 });
 

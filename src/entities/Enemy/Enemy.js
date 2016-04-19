@@ -11,13 +11,14 @@ const defaults = {
   fired: false,
   destroyed: false,
   AI: 'chaser',
-  pts: 20
+  pts: 20,
+  dmg: 10
 };
 
 const AIActions = {
   'chaser': ['trackEnemy', 'move', 'fireShot'],
-  'little-circle': ['trackEnemy', 'littleCircle', 'fireShot'],
-  'big-circle': ['bigCircle', 'fireShot'],
+  'arc': ['trackEnemy', 'littleCircle', 'fireShot'],
+  'patroller': ['trackEnemy', 'patrol', 'fireShot'],
   'sentinel': ['trackEnemy', 'fireShot']
 };
 
@@ -57,6 +58,10 @@ class Enemy {
     this.entity.gotoAndPlay('idle');
 
     this.stage.addChild(this.entity);
+  }
+
+  playSound(id) {
+    createjs.Sound.play(`sound/${id}`);
   }
 
   react(enemy, delta, entities, bullets, points) {
@@ -134,89 +139,117 @@ class Enemy {
   }
 
   patrol(enemy, delta) {
-    let edgeDistances = [
-      Math.abs(0 - this.entity.x),
-      Math.abs(this.stage.canvas.clientWidth - this.entity.x),
-      Math.abs(0 - this.entity.y),
-      Math.abs(this.stage.canvas.clientHeight - this.entity.y)
-    ];
+    if(!createjs.Ticker.paused) {
+      const edges = [
+        'x-start',
+        'x-end',
+        'y-start',
+        'y-end'
+      ];
 
-    let edges = [
-      'x-start',
-      'x-end',
-      'y-start',
-      'y-end'
-    ];
+      if(!this.properties.patrolGenerated) {
+        let edgeDistances = [
+          Math.abs(0 - this.entity.x),
+          Math.abs(this.stage.canvas.clientWidth - this.entity.x),
+          Math.abs(0 - this.entity.y),
+          Math.abs(this.stage.canvas.clientHeight - this.entity.y)
+        ];
 
-    const closeXStart = this.entity.x >= -40 && this.entity.x <= 40;
-    const closeXEnd = this.entity.x >= this.stage.canvas.clientWidth - 40 && this.entity.x <= this.stage.canvas.clientWidth + 40;
+        this.properties.patrolStartPos = {
+          x: this.entity.x,
+          y: this.entity.y
+        };
 
-    const closeYStart = this.entity.y >= -40 && this.entity.y <= 40;
-    const closeYEnd = this.entity.y >= this.stage.canvas.clientHeight - 40 && this.entity.y <= this.stage.canvas.clientHeight + 40;
+        this.properties.patrolGenerated = true;
+        this.properties.patrolEnded = false;
 
-    let closestEdge;
+        let farthestEdge = edges[edgeDistances.indexOf(Math.max(...edgeDistances))];
 
-    if(this.properties.lastClosestEdge) {
-      if(closeXStart || closeXEnd || closeYStart || closeYEnd) {
-        edgeDistances.splice(edges.indexOf(this.properties.lastClosestEdge), 1);
+        let patrolEndPos;
 
-        closestEdge = edges[edgeDistances.indexOf(Math.min(...edgeDistances))];
-      } else {
-        closestEdge = this.properties.lastClosestEdge;
+        this.properties.farthestEdge = farthestEdge;
+
+        switch(farthestEdge) {
+          case edges[0]:
+            patrolEndPos = {
+              x: 0 + this.entity._bounds.width,
+              y: this.entity.y
+            };
+
+            break;
+
+          case edges[1]:
+            patrolEndPos = {
+              x: this.stage.canvas.clientWidth - this.entity._bounds.width,
+              y: this.entity.y
+            };
+
+            break;
+
+          case edges[2]:
+            patrolEndPos = {
+              x: this.entity.x,
+              y: 0 + this.entity._bounds.height
+            }
+
+            break;
+
+          case edges[3]:
+            patrolEndPos = {
+              x: this.entity.x,
+              y: this.stage.canvas.clientHeight - this.entity._bounds.height
+            };
+
+            break;
+
+          default:
+            break;
+        }
+
+        this.properties.patrolEndPos = patrolEndPos;
       }
-    } else {
-     closestEdge = edges[edgeDistances.indexOf(Math.min(...edgeDistances))];
-    }
 
-    this.properties.lastClosestEdge = closestEdge;
-
-    switch(closestEdge) {
-      case edges[0]:
-        this.trackEnemy({ x: 0, y: this.entity.y});
-
-        if(this.entity.x > 0) {
-          this.entity.x -= delta * (Math.floor(Math.random() * ((200 - 1) - 1 + 1)) + 1);
-        } else {
-          this.entity.x += delta * (Math.floor(Math.random() * ((200 - 1) - 1 + 1)) + 1);
+      if(!this.properties.patrolEnded) {
+        if(this.properties.farthestEdge === edges[1]) {
+          this.entity.x += delta * 50;
         }
 
-        break;
-
-      case edges[1]:
-        this.trackEnemy({ x: this.stage.canvas.clientWidth, y: this.entity.y});
-
-        if(this.entity.x > this.stage.canvas.clientWidth) {
-          this.entity.x -= delta * (Math.floor(Math.random() * ((200 - 1) - 1 + 1)) + 1);
-        } else {
-          this.entity.x += delta * (Math.floor(Math.random() * ((200 - 1) - 1 + 1)) + 1);
+        if(this.properties.farthestEdge === edges[3]) {
+          this.entity.y += delta * 50;
         }
 
-        break;
-
-      case edges[2]:
-        this.trackEnemy({ x: this.entity.x, y: 0});
-
-        if(this.entity.y > 0) {
-          this.entity.y -= delta * (Math.floor(Math.random() * ((200 - 1) - 1 + 1)) + 1);
-        } else {
-          this.entity.y += delta * (Math.floor(Math.random() * ((200 - 1) - 1 + 1)) + 1);
+        if(this.properties.farthestEdge === edges[0]) {
+          this.entity.x -= delta * 50;
         }
 
-        break;
-
-      case edges[3]:
-        this.trackEnemy({ x: this.entity.x, y: this.stage.canvas.clientHeight});
-
-        if(this.entity.y > this.stage.canvas.clientHeight) {
-          this.y -= delta * (Math.floor(Math.random() * ((200 - 1) - 1 + 1)) + 1);
-        } else {
-          this.y += delta * (Math.floor(Math.random() * ((200 - 1) - 1 + 1)) + 1);
+        if(this.properties.farthestEdge === edges[2]) {
+          this.entity.y -= delta * 50;
         }
 
-        break;
+        if(Math.abs(this.entity.x - this.properties.patrolEndPos.x) <= 40 && Math.abs(this.entity.y - this.properties.patrolEndPos.y) <= 40) {
+          this.properties.patrolEnded = true;
+        }
+      } else {
+        if(this.properties.farthestEdge === edges[1]) {
+          this.entity.x -= delta * 50;
+        }
 
-      default:
-        break;
+        if(this.properties.farthestEdge === edges[3]) {
+          this.entity.y -= delta * 50;
+        }
+
+        if(this.properties.farthestEdge === edges[0]) {
+          this.entity.x += delta * 50;
+        }
+
+        if(this.properties.farthestEdge === edges[2]) {
+          this.entity.y += delta * 50;
+        }
+
+        if(Math.abs(this.entity.x - this.properties.patrolStartPos.x) <= 40 && Math.abs(this.entity.y - this.properties.patrolStartPos.y) <= 40) {
+          this.properties.patrolEnded = false;
+        }
+      }
     }
   }
 
@@ -278,7 +311,9 @@ class Enemy {
       if(!this.properties.fired) {
         this.properties.fired = true;
 
-        const bullet = new Bullet(this.properties.bullet, this.entity, this.stage, { type: 'enemy', dmg: 10 });
+        this.playSound('enemy_bullet');
+
+        const bullet = new Bullet(this.properties.bullet, this.entity, this.stage, { type: 'enemy', dmg: this.properties.dmg });
 
         this.stage.addChild(bullet.entity);
 
@@ -289,6 +324,8 @@ class Enemy {
 
   destroy() {
     this.properties.destroyed = true;
+
+    this.playSound('enemy_destroyed');
 
     this.stage.removeChild(this.entity);
   }

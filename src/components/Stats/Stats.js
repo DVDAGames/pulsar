@@ -10,11 +10,15 @@ class Stats extends Component {
   render() {
     return (
       <div className="game-hud-stats">
-        <p><strong>Health</strong>: {this.props.health} / {this.props.maxHealth}</p>
-        <p><strong>Energy</strong>: {this.props.energy} / {this.props.maxEnergy}</p>
-        <p><strong>Bullets</strong>: {this.props.bullets} / {this.props.maxBullets}</p>
-        <p><strong>Points</strong>: {this.props.points}</p>
-        <p><strong>Lives</strong>: {this.props.lives}</p>
+        <div className="game-hud-stats-bars">
+          <div className="game-hud-stats-bar game-hud-stats-bar--health"><div className="game-hud-stats-bar-fill" data-val={this.props.health} data-max={this.props.maxHealth} style={{width: `${(this.props.health / this.props.maxHealth * 100)}%`}}></div></div>
+          <div className="game-hud-stats-bar game-hud-stats-bar--energy"><div className="game-hud-stats-bar-fill" data-val={this.props.energy} data-max={this.props.maxEnergy} style={{width: `${(this.props.energy / this.props.maxEnergy * 100)}%`}}></div></div>
+        </div>
+        <div className="game-hud-stats-score">{this.props.points}</div>
+        <div className="game-hud-stats-numbers">
+          <p><strong>Bullets</strong>: {this.props.bullets} / {this.props.maxBullets}</p>
+          <p><strong>Lives</strong>: {this.props.lives + 1}</p>
+        </div>
       </div>
     )
   }
