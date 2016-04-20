@@ -1,5 +1,7 @@
 {
   "name": "pulsar",
+  "version": "0.2.1",
+  "private": true,
   "description": "LD35 entry",
   "main": "app/window.js",
   "author": "dvdagames",
