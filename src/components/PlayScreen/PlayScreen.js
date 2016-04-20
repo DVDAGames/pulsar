@@ -539,11 +539,11 @@ class PlayScreen extends Component {
         bullets.forEach((bullet, index, array) => {
           const shoot = bullet.shoot(delta, [player, ...enemies], this.state.points);
 
-          if(shoot.hit) {
+          if(shoot.hitCheck.hit || shoot.offScreen) {
             array.splice(index, 1);
           }
 
-          this.state.playerPoints = this.state.playerPoints + shoot.pts;
+          this.state.playerPoints = this.state.playerPoints + shoot.hitCheck.pts;
         });
 
         stars.forEach((star) => {

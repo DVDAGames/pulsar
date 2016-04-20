@@ -104,14 +104,24 @@ class Bullet {
 
   shoot(delta, entities) {
     if(!createjs.Ticker.paused) {
-      const hit = this.collisionCheck(entities);
+      const hitCheck = this.collisionCheck(entities);
+      let offScreen = false;
 
-      if(!hit.hit) {
+      if(!hitCheck.hit) {
         this.entity.x -= Math.sin(this.origin.rotation * (Math.PI / -180)) * this.properties.speed;
         this.entity.y -= Math.cos(this.origin.rotation * (Math.PI / -180)) * this.properties.speed;
       }
 
-      return hit;
+      if(this.entity.x > this.stage.canvas.clientWidth + 50 || this.entity.x < -50 || this.entity.y < -50 || this.entity.y > this.stage.canvas.clientHeight) {
+        offScreen = true;
+
+        this.destroy();
+      }
+
+      return {
+        hitCheck,
+        offScreen
+      };
     }
   }
 
