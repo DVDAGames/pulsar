@@ -23,7 +23,7 @@
     "package:osx": "electron-packager . $npm_package_electron_appName --platform=darwin --arch=x64 --asar --out=\"../dist/$npm_package_version\" --app-version=$npm_package_version --app-copyright=$npm_package_electron_appCopyright --app-bundle-id=$npm_package_electron_appBundleId --app-helper-id=$npm_package_electron_appBundleId --app-categoy-type=$npm_package_electron_appCategoyType",
     "package:win": "electron-packager . $npm_package_electron_appName --platform=win32 --arch=all --asar --out=\"../dist/$npm_package_version\" --app-version=$npm_package_version --app-copyright=$npm_package_electron_appCopyright --version-string.CompanyName=$npm_package_electron_versionString_companyName --version-string.ProductName=$npm_package_electron_versionString_productName",
     "package:linux": "electron-packager . $npm_package_electron_appName --platform=linux --arch=all --asar --out=\"../dist/$npm_package_version\" --app-version=$npm_package_version --app-copyright=$npm_package_electron_appCopyright --version-string.CompanyName=$npm_package_electron_versionString_companyName",
-    "package:all": "npm run package:osx & npm run package:win & npm run package:linux",
+    "package:all": "npm run package:osx && npm run package:win && npm run package:linux",
     "package": "npm run clean && npm run package:all"
   },
   "devDependencies": {
