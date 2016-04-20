@@ -33,7 +33,7 @@
   "dependencies": {
     "axios": "^0.9.1",
     "buttonmancer": "^0.2.2",
-    "gamepadder": "^0.5.0",
+    "gamepadder": "^0.5.1",
     "hapi": "^13.3.0",
     "inert": "^3.2.0",
     "open": "0.0.5",
