@@ -1,4 +1,4 @@
-# pulsar v0.2.0
+# pulsar v0.2.1
 
 Ludum Dare #35 Game Jam Entry
 
@@ -6,7 +6,7 @@ Ludum Dare #35 Game Jam Entry
 
 ## What is it?
 
-A mediocre top down shooter that's like if Asteroids and a bullet-hell game both had weird cousins that liked to hang out.
+A mediocre top down shooter that's like if Asteroids and a bullet-hell game both had weird cousins that liked to hang out and they got drunk one weekend and decided to make their own game.
 
 ## Tools used
 

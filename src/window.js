@@ -79,7 +79,10 @@ app.on('will-finish-launching', () => {
 app.on('ready', () => {
   mainWindow = new BrowserWindow({
     width: 960,
-    height: 768
+    height: 768,
+    resizable: false,
+    fullscreen: false,
+
   });
 
   mainWindow.loadURL(`http://localhost:${port}/`);

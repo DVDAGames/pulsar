@@ -87,7 +87,7 @@ class TitleScreen extends Component {
         const buttonMap = new Buttonmancer(ButtonmancerUtils.convertButtonIndexesToButtonNames(ActionMap[pulsarControls.playUsing], controller.options.buttonMap));
 
         if(!pulsarControls.controllers[controller.id]) {
-          this.stare.controllers[controller.id] = {
+          pulsarControls.controllers[controller.id] = {
             controller,
             buttonMap
           };
