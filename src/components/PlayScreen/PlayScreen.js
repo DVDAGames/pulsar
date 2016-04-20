@@ -321,7 +321,7 @@ class PlayScreen extends Component {
 
       let keyPressed = ButtonmancerUtils.getKey(e).key;
 
-      if(this.state.controlsChosen && this.state.playUsing === 'keyboard') {
+      if(this.state.controlsChosen && this.state.playUsing === 'keyboard' && keyPressed && keyPressed.key) {
         this.state.controllers[0].controller.keyPresses[keyPressed.key] = true;
       }
     });
@@ -331,7 +331,7 @@ class PlayScreen extends Component {
 
       let keyPressed = ButtonmancerUtils.getKey(e).key;
 
-      if(keyPressed.key === ActionMap.PAUSE) {
+      if(keyPressed && keyPressed.key && keyPressed.key === ActionMap.PAUSE) {
         createjs.Ticker.paused = !createjs.Ticker.paused;
 
         this.state.gamePaused = !this.state.gamePaused;
@@ -340,7 +340,7 @@ class PlayScreen extends Component {
           gamePaused: this.state.gamePaused
         });
       } else {
-        if(this.state.controlsChosen && this.state.playUsing === 'keyboard') {
+        if(this.state.controlsChosen && this.state.playUsing === 'keyboard' && keyPressed && keyPressed.key) {
           this.state.controllers[0].controller.keyPresses[keyPressed.key] = false;
         }
       }

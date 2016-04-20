@@ -1,6 +1,18 @@
 $bg: #f7f7f7;
 $text: #323232;
 
+@keyframes fade {
+  0% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 0;
+  }
+  75% {
+    opacity: 1;
+  }
+}
+
 html {
   box-sizing: border-box;
 }
@@ -87,6 +99,7 @@ a {
           &:focus {
             color: $bg;
             background: $text;
+            outline: none;
           }
         }
 
@@ -123,6 +136,12 @@ a {
     }
   }
 
+  &-msg {
+    &--throb {
+      animation: fade 1.5s infinite;
+    }
+  }
+
   &-back-button {
     position: absolute;
     top: 10px;
@@ -133,7 +152,8 @@ a {
     &:hover,
     &:focus {
       background: $text;
-      color: $bg
+      color: $bg;
+      outline: none;
     }
   }
 

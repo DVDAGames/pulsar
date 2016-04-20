@@ -8,7 +8,8 @@ const ActionList = [
   'ABSORB',
   //'BURST',
   'USE_POWER',
-  'PAUSE'
+  'PAUSE',
+  'MENU_SELECT'
 ];
 
 export default ActionList;

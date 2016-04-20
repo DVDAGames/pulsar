@@ -9,7 +9,7 @@ class BackButton extends Component {
 
   render() {
     return (
-      <a href="#" className="game-back-button" onClick={this.context.router.goBack}>Back</a>
+      <a href="#" ref="backButton" className="game-back-button" onClick={this.context.router.goBack}>Back</a>
     );
   }
 }
