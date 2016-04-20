@@ -33,82 +33,11 @@ class HelpScreen extends Component {
   componentDidMount() {
     this.refs.back.refs.backButton.focus();
 
-    this.addListeners();
-
     const fps = 10;
 
     this.checkForControllerInteractions = setInterval(() => {
       requestAnimationFrame(this.tick);
     }, 1000 / fps);
-  }
-
-  addListeners() {
-    this.controllerConnectedEvent = window.addEventListener('gamepadconnected', (e) => {
-      if(!this.state.controlsChosen) {
-        this.state.controlsChosen = true;
-        this.state.playUsing = 'gamepad';
-      }
-
-      if(this.state.playUsing === 'gamepad' && this.state.controllers.length < this.state.numberOfPlayers) {
-        console.log('gamepad connected');
-
-        const controller = new Gamepadder(e.gamepad);
-
-        const buttonMap = new Buttonmancer(ButtonmancerUtils.convertButtonIndexesToButtonNames(ActionMap[this.state.playUsing], controller.options.buttonMap));
-
-        if(!this.state.controllers[controller.id]) {
-          this.state.controllers[controller.id] = {
-            controller,
-            buttonMap
-          };
-
-          this.setState({
-            controllers: this.state.controllers,
-            controlsChosen: this.state.controlsChosen,
-            playUsing: this.state.playUsing
-          });
-        }
-
-        this.controllerDisconnectedEvent = window.addEventListener('gamepaddisconnected', (e) => {
-          console.log('gamepad disconnected');
-          this.state.controllers.splice(e.gamepad.id, 1);
-
-          this.setState({
-            controllers: this.state.controllers
-          });
-        });
-      }
-    });
-
-    document.addEventListener('keydown', (e) => {
-      e.preventDefault();
-
-      let keyPressed = ButtonmancerUtils.getKey(e).key;
-
-      if(this.state.controlsChosen && this.state.playUsing === 'keyboard' && keyPressed && keyPressed.key) {
-        this.state.controllers[0].controller.keyPresses[keyPressed.key] = true;
-      }
-    });
-
-    document.addEventListener('keyup', (e) => {
-      e.preventDefault();
-
-      let keyPressed = ButtonmancerUtils.getKey(e).key;
-
-      if(keyPressed && keyPressed.key && keyPressed.key === ActionMap.PAUSE) {
-        createjs.Ticker.paused = !createjs.Ticker.paused;
-
-        this.state.gamePaused = !this.state.gamePaused;
-
-        this.setState({
-          gamePaused: this.state.gamePaused
-        });
-      } else {
-        if(this.state.controlsChosen && this.state.playUsing === 'keyboard' && keyPressed && keyPressed.key) {
-          this.state.controllers[0].controller.keyPresses[keyPressed.key] = false;
-        }
-      }
-    });
   }
 
   tick() {
@@ -161,7 +90,7 @@ class HelpScreen extends Component {
 
   render() {
     const actionKeys = {};
-    const controllerType = pulsarControls.controllers[0].controller.name;
+    const controllerType = pulsarControls.controllers[0].controller.displayName;
 
     for(const input in pulsarControls.controllers[0].buttonMap.map) {
       if(pulsarControls.controllers[0].buttonMap.map.hasOwnProperty(input)) {

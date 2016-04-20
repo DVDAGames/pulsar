@@ -16,20 +16,31 @@ class TitleScreen extends Component {
 
     this.props = props;
 
+    this.checkForGamePadsInterval = null;
+
     this.goToMenu = this.goToMenu.bind(this);
+    this.pollGamepads = this.pollGamepads.bind(this);
+    this.tick = this.tick.bind(this);
 
     pulsarControls.controllers = [];
     pulsarControls.controlsChosen = false;
-    pulsarControls.playUsing = 'gamepad';``
+    pulsarControls.playUsing = 'gamepad';
+    pulsarControls.numberOfPlayers = 1;
   }
 
   componentDidMount() {
     if (!('ongamepadconnected' in window) || GamepadderUtils.getGamepads().length !== pulsarControls.numberOfPlayers) {
       //No gamepad events available, poll instead.
-      this.checkForGamePadsInterval = setInterval(this.pollGamepads.bind(this), 300);
+      this.checkForGamePadsInterval = setInterval(this.pollGamepads, 300);
     }
 
     this.addListeners();
+
+    const fps = 10;
+
+    this.checkForControllerInteractions = setInterval(() => {
+      requestAnimationFrame(this.tick);
+    }, 1000 / fps);
   }
 
   pollGamepads() {
@@ -41,7 +52,7 @@ class TitleScreen extends Component {
 
       gamepads.forEach((pad, index) => {
         const controller = new Gamepadder(pad);
-        const buttonMap = new Buttonmancer(ActionMap[pulsarControls.playUsing]);
+        const buttonMap = new Buttonmancer(ButtonmancerUtils.convertButtonIndexesToButtonNames(ActionMap[pulsarControls.playUsing], controller.options.buttonMap));
 
         if(!pulsarControls.controllers[index]) {
           pulsarControls.controllers[index] = {
@@ -54,8 +65,6 @@ class TitleScreen extends Component {
       if(gamepads.length === pulsarControls.numberOfPlayers) {
         clearInterval(this.checkForGamePadsInterval);
       }
-
-      this.goToMenu();
     }
   }
 
@@ -78,18 +87,22 @@ class TitleScreen extends Component {
         const buttonMap = new Buttonmancer(ButtonmancerUtils.convertButtonIndexesToButtonNames(ActionMap[pulsarControls.playUsing], controller.options.buttonMap));
 
         if(!pulsarControls.controllers[controller.id]) {
-          pulsarControls.controllers[controller.id] = {
+          this.stare.controllers[controller.id] = {
             controller,
             buttonMap
           };
-
-          this.goToMenu();
         }
 
         this.controllerDisconnectedEvent = window.addEventListener('gamepaddisconnected', (e) => {
           console.log('gamepad disconnected');
           pulsarControls.controllers.splice(e.gamepad.id, 1);
+
+          this.setState({
+            controllers: pulsarControls.controllers
+          });
         });
+      } else {
+        clearInterval(this.checkForGamePadsInterval);
       }
     });
 
@@ -97,7 +110,8 @@ class TitleScreen extends Component {
       e.preventDefault();
 
       if(!pulsarControls.controlsChosen) {
-        let keyPressed = ButtonmancerUtils.getKey(e).key;
+        pulsarControls.controlsChosen = true;
+        pulsarControls.playUsing = 'keyboard';
 
         clearInterval(this.checkForGamePadsInterval);
 
@@ -116,8 +130,61 @@ class TitleScreen extends Component {
           },
           buttonMap: new Buttonmancer(actions)
         };
+      }
 
-        this.goToMenu();
+      let keyPressed = ButtonmancerUtils.getKey(e).key;
+
+      if(pulsarControls.controlsChosen && pulsarControls.playUsing === 'keyboard' && keyPressed && keyPressed.key) {
+        pulsarControls.controllers[0].controller.keyPresses[keyPressed.key] = true;
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      e.preventDefault();
+
+      let keyPressed = ButtonmancerUtils.getKey(e).key;
+
+      if(pulsarControls.controlsChosen && pulsarControls.playUsing === 'keyboard' && keyPressed && keyPressed.key) {
+        pulsarControls.controllers[0].controller.keyPresses[keyPressed.key] = false;
+      }
+    });
+  }
+
+  tick() {
+    const gamepads = GamepadderUtils.getGamepads();
+
+    pulsarControls.controllers.forEach((inputMethod, index) => {
+      let buttonPresses;
+      let previousButtons;
+
+      if(inputMethod.controller.name === 'Keyboard') {
+        buttonPresses = inputMethod.controller.keyPresses;
+      } else {
+        const buttonPressObject = inputMethod.controller.checkForButtonPress(gamepads[index]);
+
+        buttonPresses = buttonPressObject.buttonPresses;
+        previousButtons = buttonPressObject.previousButtons
+      }
+
+      if(buttonPresses) {
+        for(const pressedButton in buttonPresses) {
+          if(buttonPresses.hasOwnProperty(pressedButton)) {
+            if(buttonPresses[pressedButton] && inputMethod.buttonMap.map.hasOwnProperty(pressedButton)) {
+              const actionName = inputMethod.buttonMap.map[pressedButton];
+
+              let currentIndex;
+              let newIndex;
+
+              switch(actionName) {
+                default:
+                  clearInterval(this.checkForControllerInteractions);
+                  this.goToMenu();
+
+                  break;
+              }
+            }
+          }
+        }
       }
     });
   }
